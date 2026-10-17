@@ -8,7 +8,8 @@ import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
 import { RespaldoPalabras } from "../componentes/Recuperacion";
 import { ErrorReenvio, useBilleteraInvisible, donarSinCripto, type PagoPrevio, type PasoDonacion } from "../lib/billeteraInvisible";
-import { useCampana, useEmpresasAliadas, useNombres, useSaldoCop } from "../lib/datos";
+import { useCampana, useEmpresasAliadas, useNombres, useReputacion, useSaldoCop } from "../lib/datos";
+import { tasaBps, textoTasa } from "../lib/sostenibilidad";
 import { mensajeError } from "../lib/errores";
 import { corta, fecha, pesos } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
@@ -73,8 +74,36 @@ function BotonDonarMovil({ campana }: { campana: Address }) {
   );
 }
 
+/** Cómo se reparte la donación con la tasa de éxito (modelo de la próxima versión del contrato). */
+function DesgloseTasa({ montoPesos, bps }: { montoPesos: number; bps: number }) {
+  const tasa = Math.round((montoPesos * bps) / 10_000);
+  const fmt = (n: number) => `$${n.toLocaleString("es-CO")}`;
+  return (
+    <div className="rounded-xl bg-neutro-50 p-3 text-xs ring-1 ring-inset ring-neutro-200/60">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-neutro-600">A la emergencia</span>
+        <strong className="font-display text-sm text-neutro-900">{fmt(montoPesos - tasa)}</strong>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-neutro-600">
+          Sostiene la plataforma ({textoTasa(bps)}) · <span className="font-semibold text-exito-700">solo si la ayuda llega</span>
+        </span>
+        <strong className="font-display text-sm text-neutro-900">{fmt(tasa)}</strong>
+      </div>
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-neutro-500">
+        <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-neutro-600 ring-1 ring-inset ring-neutro-200">Próxima versión</span>
+        Hoy el 100 % va a la emergencia.
+        <a className="font-semibold text-marca-700 hover:underline" href="#/sostenibilidad">
+          ¿Cómo nos sostenemos?
+        </a>
+      </p>
+    </div>
+  );
+}
+
 function CajaDonar({ campana }: { campana: Address }) {
   const { info } = useCampana(campana);
+  const rep = useReputacion([info?.fundacion]);
   const [modo, setModo] = useState<"facil" | "wallet">("facil");
   const [monto, setMonto] = useState("20000");
   const pesosNum = Number(monto.replace(/\D/g, "")) || 0;
@@ -127,6 +156,7 @@ function CajaDonar({ campana }: { campana: Address }) {
             </div>
           </div>
 
+          {pesosNum > 0 && <DesgloseTasa montoPesos={pesosNum} bps={tasaBps(rep(info?.fundacion))} />}
           {wei > restante && restante > 0n && <p className="nota-alerta text-xs">Faltan {pesos(restante)} para la meta: solo se cobrará esa cantidad.</p>}
 
           {modo === "facil" ? <DonarFacil campana={campana} montoPesos={pesosNum} /> : <DonarConWallet campana={campana} wei={wei} restante={restante} pesosNum={pesosNum} />}

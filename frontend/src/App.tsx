@@ -13,6 +13,7 @@ import { VistaPublica } from "./vistas/Publica";
 import { VistaRastreo } from "./vistas/Rastreo";
 import { VistaRecibir } from "./vistas/Recibir";
 import { VistaReputacion } from "./vistas/Reputacion";
+import { VistaSostenibilidad } from "./vistas/Sostenibilidad";
 import { VistaTarjetas } from "./vistas/Tarjetas";
 
 const PESTANAS = [
@@ -21,6 +22,7 @@ const PESTANAS = [
   { ruta: "rastreo", texto: "Rastrear mi donación" },
   { ruta: "reputacion", texto: "Reputación" },
   { ruta: "panel", texto: "Panel de actores" },
+  { ruta: "sostenibilidad", texto: "Cómo nos sostenemos" },
 ] as const;
 type Vista = (typeof PESTANAS)[number]["ruta"] | "tarjetas";
 
@@ -112,7 +114,7 @@ function Principal({ ruta }: { ruta: string[] }) {
           </Aviso>
         ) : null}
 
-        {vista !== "reputacion" && vista !== "tarjetas" && (
+        {vista !== "reputacion" && vista !== "tarjetas" && vista !== "sostenibilidad" && (
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="w-full sm:max-w-xl">
               {cargando ? <div className="h-[68px] animate-pulse rounded-xl bg-neutro-200/70" /> : <SelectorCampana campanas={campanas} seleccionada={campana} onCambiar={elegir} />}
@@ -127,6 +129,8 @@ function Principal({ ruta }: { ruta: string[] }) {
           <VistaRastreo campana={campana} donanteRuta={ruta[2]} />
         ) : vista === "campana" ? (
           <VistaPublica campana={campana} />
+        ) : vista === "sostenibilidad" ? (
+          <VistaSostenibilidad />
         ) : vista === "reputacion" ? (
           <VistaReputacion />
         ) : vista === "tarjetas" ? (
