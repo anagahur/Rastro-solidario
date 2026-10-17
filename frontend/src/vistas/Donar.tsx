@@ -7,9 +7,9 @@ import { CHAIN_ID, DIRECCIONES, ES_MONAD } from "../config";
 import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
 import { ErrorReenvio, useBilleteraInvisible, donarSinCripto, type PagoPrevio, type PasoDonacion } from "../lib/billeteraInvisible";
-import { useCampana, useNombres, useSaldoCop } from "../lib/datos";
+import { useCampana, useEmpresasAliadas, useNombres, useSaldoCop } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
-import { corta, fecha, mismaDireccion, pesos } from "../lib/formato";
+import { corta, fecha, pesos } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
 import { navegar } from "../lib/ruta";
 import { useEscribir } from "../lib/useEscribir";
@@ -46,27 +46,13 @@ export function VistaDonar({ campana }: { campana?: Address }) {
 }
 
 function CajaDonar({ campana }: { campana: Address }) {
-  const { info, matchings } = useCampana(campana);
+  const { info } = useCampana(campana);
   const [modo, setModo] = useState<"facil" | "wallet">("facil");
   const [monto, setMonto] = useState("20000");
   const pesosNum = Number(monto.replace(/\D/g, "")) || 0;
   const wei = parseEther(String(pesosNum));
   const restante = info ? info.meta - info.totalRecaudado : 0n;
   const abierta = info?.estado === 0;
-
-  // Cuánto suma el matching a esta donación (misma regla que el contrato, en orden).
-  let extra = 0n;
-  let quedan = restante - (wei > restante ? restante : wei);
-  for (const m of matchings) {
-    const libre = m.tope - m.usado;
-    let e = (wei * BigInt(m.proporcionBps)) / 10_000n;
-    if (e > libre) e = libre;
-    if (e > quedan) e = quedan;
-    if (e > 0n) {
-      extra += e;
-      quedan -= e;
-    }
-  }
 
   return (
     <Seccion titulo="Donar" descripcion="Tu donación queda en el contrato, no en la cuenta de la fundación.">
@@ -104,16 +90,11 @@ function CajaDonar({ campana }: { campana: Address }) {
             </div>
           </div>
 
-          {extra > 0n && (
-            <p className="rounded-xl bg-gradient-to-r from-amber-100 to-orange-50 p-3 text-sm text-amber-950">
-              🎁 Con el matching de las empresas aliadas, tus {pesos(wei)} se convierten en <strong>{pesos(wei + extra)}</strong> para la emergencia.
-            </p>
-          )}
           {wei > restante && restante > 0n && (
             <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Faltan {pesos(restante)} para la meta: solo se cobrará esa cantidad.</p>
           )}
 
-          {modo === "facil" ? <DonarFacil campana={campana} montoPesos={pesosNum} extra={extra} /> : <DonarConWallet campana={campana} wei={wei} restante={restante} pesosNum={pesosNum} />}
+          {modo === "facil" ? <DonarFacil campana={campana} montoPesos={pesosNum} /> : <DonarConWallet campana={campana} wei={wei} restante={restante} pesosNum={pesosNum} />}
         </div>
       )}
     </Seccion>
@@ -138,7 +119,7 @@ const PASOS: { id: PasoDonacion["paso"]; texto: string }[] = [
   { id: "registrado", texto: "Registrada en la blockchain · gas pagado por Rastro Solidario" },
 ];
 
-function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPesos: number; extra: bigint }) {
+function DonarFacil({ campana, montoPesos }: { campana: Address; montoPesos: number }) {
   const qc = useQueryClient();
   const avisar = useAvisar();
   const { direccion } = useBilleteraInvisible();
@@ -148,7 +129,7 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
   const [fase, setFase] = useState<"formulario" | "pasarela" | "procesando" | "error" | "listo">("formulario");
   const [error, setError] = useState("");
   const [hechos, setHechos] = useState<Set<string>>(new Set());
-  const [resultado, setResultado] = useState<{ referencia: string; hash?: string; cuenta: Address; extra: bigint } | null>(null);
+  const [resultado, setResultado] = useState<{ referencia: string; hash?: string; cuenta: Address } | null>(null);
   // Pago ya acreditado en un intento que falló después: "Intentar de nuevo" no vuelve a cobrar.
   const pagoPrevio = useRef<PagoPrevio | undefined>(undefined);
   useEffect(() => {
@@ -162,11 +143,10 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
   async function pagar() {
     setFase("procesando");
     setHechos(new Set());
-    const extraAlPagar = extra;
     try {
       const r = await donarSinCripto(campana, montoPesos, metodo, (p) => setHechos((h) => new Set([...h, p.paso])), pagoPrevio.current);
       pagoPrevio.current = undefined;
-      setResultado({ referencia: r.referencia, hash: r.hash, cuenta: r.cuenta, extra: extraAlPagar });
+      setResultado({ referencia: r.referencia, hash: r.hash, cuenta: r.cuenta });
       setFase("listo");
       await qc.invalidateQueries();
     } catch (e) {
@@ -181,7 +161,6 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
     return (
       <div className="space-y-3 rounded-xl bg-emerald-50 p-4">
         <p className="text-lg font-bold text-emerald-900">¡Gracias! Donaste {montoPesos.toLocaleString("es-CO")} pesos 💚</p>
-        {resultado.extra > 0n && <p className="text-sm text-emerald-800">La empresa aliada sumó {pesos(resultado.extra)} más gracias a ti.</p>}
         <p className="text-sm text-emerald-800">
           Referencia del pago: <strong>{resultado.referencia}</strong>. Tu donación ya está en el contrato y nadie la puede mover sin verificación.
         </p>
@@ -304,7 +283,7 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
 
 // ─────────────────────────── Con wallet (MetaMask) ───────────────────────────
 
-function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address; wei: bigint; restante: bigint; pesosNum: number }) {
+export function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address; wei: bigint; restante: bigint; pesosNum: number }) {
   const { address, chainId } = useAccount();
   const saldo = useSaldoCop();
   const cliente = usePublicClient({ chainId: CHAIN_ID });
@@ -400,8 +379,9 @@ function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address
 }
 
 function DonacionesRecientes({ campana }: { campana: Address }) {
-  const { recientes, matchings } = useCampana(campana);
-  const nombre = useNombres(matchings.map((m) => m.empresa));
+  const { recientes } = useCampana(campana);
+  const { esEmpresa } = useEmpresasAliadas(campana);
+  const nombre = useNombres(recientes.filter((d) => esEmpresa(d.donante)).map((d) => d.donante));
   return (
     <Seccion titulo="Últimas donaciones" descripcion="Leídas directamente del contrato.">
       {recientes.length === 0 ? (
@@ -409,11 +389,13 @@ function DonacionesRecientes({ campana }: { campana: Address }) {
       ) : (
         <ul className="divide-y divide-stone-100">
           {recientes.map((d, i) => {
-            const empresa = matchings.some((m) => mismaDireccion(m.empresa, d.donante));
+            const empresa = esEmpresa(d.donante);
             return (
               <li key={`${d.donante}-${d.bloque}-${i}`} className="flex items-center justify-between py-2 text-sm">
                 {empresa ? (
-                  <span className="text-xs font-semibold text-amber-800">🎁 {nombre(d.donante) ?? "Empresa aliada"} (matching)</span>
+                  <a className="text-xs font-semibold text-stone-800 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
+                    🏢 {nombre(d.donante) ?? "Empresa aliada"}
+                  </a>
                 ) : (
                   <a className="font-mono text-xs text-stone-500 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
                     {corta(d.donante)}
@@ -469,7 +451,7 @@ function PorQueMonad() {
           <strong className="text-stone-800">Rendimiento.</strong> En las primeras horas llegan miles de donaciones a la vez; bloques de ~400 ms y ejecución en paralelo.
         </li>
         <li>
-          <strong className="text-stone-800">Contratos de hasta 128 KB.</strong> Toda la lógica anticorrupción (censo, sobrecosto, matching, reputación) vive en la cadena, no en un
+          <strong className="text-stone-800">Contratos de hasta 128 KB.</strong> Toda la lógica anticorrupción (censo, sobrecosto, reembolsos, reputación) vive en la cadena, no en un
           servidor.
         </li>
       </ul>

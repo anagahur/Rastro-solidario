@@ -1,6 +1,6 @@
 import type { Address } from "viem";
 import type { InfoCampana } from "../lib/datos";
-import { useAhora, useCampana, useNombres, useReputacion } from "../lib/datos";
+import { useAhora, useCampana, useEmpresasAliadas, useNombres, useReputacion } from "../lib/datos";
 import { ESTADO_CAMPANA, MOTIVO_REEMBOLSO, VOTO, analizarPrecio, etiquetaEtapa, corta, fecha, pesos, porcentaje, tiempoRestante } from "../lib/formato";
 import { Barra, Direccion, Insignia } from "./Comunes";
 import { VerEvidencia } from "./Evidencia";
@@ -31,8 +31,9 @@ export function SelectorCampana({
 }
 
 export function ResumenCampana({ direccion }: { direccion: Address }) {
-  const { info, matchings } = useCampana(direccion);
-  const nombre = useNombres([info?.fundacion, ...matchings.map((m) => m.empresa)]);
+  const { info } = useCampana(direccion);
+  const { aliadas } = useEmpresasAliadas(direccion);
+  const nombre = useNombres([info?.fundacion]);
   const rep = useReputacion([info?.fundacion]);
   const ahora = useAhora(5000);
   if (!info) return <div className="tarjeta h-40 animate-pulse" />;
@@ -63,26 +64,26 @@ export function ResumenCampana({ direccion }: { direccion: Address }) {
         <Barra valor={avance} />
       </div>
 
-      {matchings.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {matchings.map((m) => {
-            const libre = m.tope - m.usado;
-            const activo = info.estado === 0 && libre > 0n;
-            const que = m.proporcionBps === 10_000 ? "duplica cada donación" : `suma el ${m.proporcionBps / 100} % de cada donación`;
-            return (
-              <li key={m.empresa} className={`rounded-xl p-3 text-sm ${activo ? "bg-gradient-to-r from-amber-100 to-orange-50 text-amber-950" : "bg-stone-100 text-stone-700"}`}>
-                <p className="mb-1.5">
-                  <strong>{nombre(m.empresa) ?? corta(m.empresa)}</strong> {activo ? `${que} · quedan ${pesos(libre)} de ${pesos(m.tope)} MockCOP` : `sumó ${pesos(m.usado)} MockCOP a las donaciones`}
-                </p>
-                {activo && <Barra valor={porcentaje(m.usado, m.tope)} className="bg-amber-500" />}
+      {aliadas.length > 0 && (
+        <div className="mt-4 rounded-xl bg-stone-50 p-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Empresas aliadas</p>
+          <ul className="mt-1.5 space-y-1">
+            {aliadas.map((e) => (
+              <li key={e.cuenta} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <a className="font-semibold text-stone-800 hover:underline" href={`#/rastreo/${direccion}/${e.cuenta}`}>
+                  🏢 {e.nombre || corta(e.cuenta)}
+                </a>
+                <span className="text-stone-600">
+                  aportó <strong className="text-stone-900">{pesos(e.aporte)}</strong> MockCOP · {porcentaje(e.aporte, info.totalRecaudado).toFixed(1)} %
+                </span>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        </div>
       )}
 
       <dl className="mt-5 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-        <Dato titulo="Donantes" valor={(info.numeroDonantes - BigInt(matchings.filter((m) => m.usado > 0n).length)).toString()} />
+        <Dato titulo="Donantes" valor={info.numeroDonantes.toString()} />
         <Dato titulo="Pagado a proveedores" valor={`${pesos(info.totalPagado)}`} />
         <Dato
           titulo="Verificación"

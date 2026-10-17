@@ -13,7 +13,7 @@ import { fechaCorta, pesos } from "./formato";
 export interface AvisoDonante {
   id: string;
   fecha: number;
-  tipo: "pago" | "matching" | "reembolso" | "sobrecosto" | "rechazo";
+  tipo: "pago" | "reembolso" | "sobrecosto" | "rechazo";
   titulo: string;
   detalle: string;
   enlace: string;
@@ -110,16 +110,6 @@ export function useAvisosDonante() {
           out.push({ id: `${base}-rechazo-${i}`, fecha: Number(c.fechaReembolso), tipo: "rechazo", titulo: `La etapa ${e.descripcion.toLowerCase()} fue rechazada`, detalle: `«${c.nombre}»: los verificadores dijeron que la entrega no ocurrió.`, enlace });
         }
       });
-      if (r.matchingGenerado > 0n) {
-        out.push({
-          id: `${base}-matching`,
-          fecha: Number(c.fechaRecaudoCerrado || c.fechaCreacion),
-          tipo: "matching",
-          titulo: `🎁 Tu donación se multiplicó: las empresas aliadas sumaron $${pesos(r.matchingGenerado)}`,
-          detalle: `Para «${c.nombre}»`,
-          enlace,
-        });
-      }
       if (r.reembolsable > 0n) {
         out.push({
           id: `${base}-reembolso`,

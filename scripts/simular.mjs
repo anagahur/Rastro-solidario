@@ -9,13 +9,13 @@
 //                                              (fundación, verificadores, empresa y patrocinador conservan su saldo)
 //
 // Escenarios:
-//   completo     Una empresa aliada duplica donaciones; N donantes donan en paralelo; la Junta de
+//   completo     Una empresa aliada dona con su nombre; N donantes donan en paralelo; la Junta de
 //                Acción Comunal carga el censo de 20 familias; 3 etapas con factura y fotos en el
 //                almacén de evidencias; las familias confirman con su QR (gas patrocinado, 1 tx por
 //                lote); la etapa de materiales llega con SOBRECOSTO y exige 3 de 3 verificadores.
 //   falla        la etapa 2 se rechaza (2 de 3, con foto de la bodega vacía) → reembolsos
-//   abierta      campaña que queda RECAUDANDO para la demo en vivo: censo cargado, matching activo
-//                y algunas donaciones. Las tarjetas QR de sus familias quedan en
+//   abierta      campaña que queda RECAUDANDO para la demo en vivo: censo cargado, aporte de la
+//                empresa aliada y algunas donaciones. Las tarjetas QR de sus familias quedan en
 //                frontend/public/familias-demo.json (solo en local).
 //   vencimiento  la etapa 1 vence sin aprobarse → cualquiera activa el reembolso (tarda ~40 s)
 import fs from "node:fs";
@@ -78,9 +78,10 @@ const correr = {
   vencimiento: ESCENARIO === "vencimiento",
 };
 
-// Matching de la empresa aliada (escenarios completo y abierta)
-const MATCHING_COMPLETO = 2_000_000; // duplica las primeras donaciones hasta 2.000.000
-const MATCHING_ABIERTA = 3_000_000;
+// Donación directa de la empresa aliada (escenarios completo y abierta): queda a su nombre, con
+// su recibo NFT, y puede rastrear en qué se gastó como cualquier donante.
+const APORTE_EMPRESA_COMPLETO = 2_000_000;
+const APORTE_EMPRESA_ABIERTA = 1_000_000;
 
 // Precios de referencia por unidad (en la vida real: SIPSA-DANE, listas de la UNGRD o del municipio)
 const PRECIOS_REFERENCIA = [150_000, 400_000, 0];
@@ -189,7 +190,7 @@ const GAS = {
   reclamar: 200_000n,
   vencer: 200_000n,
   censo: 4_000_000n,
-  matching: 400_000n,
+  aporteEmpresa: 700_000n,
   loteFamilias: 2_500_000n,
   mintPorDestino: 60_000n,
   dispersarPorDestino: 60_000n,
@@ -205,9 +206,9 @@ const indiceInicial = {
 };
 const indiceFamilias = { completo: 5000, abierta: 5000 + N_FAMILIAS };
 const plan = [];
-if (correr.completo) plan.push({ esc: "completo", n: N_DONANTES, matching: MATCHING_COMPLETO, censo: true });
+if (correr.completo) plan.push({ esc: "completo", n: N_DONANTES, aporteEmpresa: APORTE_EMPRESA_COMPLETO, censo: true });
 if (correr.falla) plan.push({ esc: "falla", n: N_FALLA });
-if (correr.abierta) plan.push({ esc: "abierta", n: N_ABIERTA, matching: MATCHING_ABIERTA, censo: true });
+if (correr.abierta) plan.push({ esc: "abierta", n: N_ABIERTA, aporteEmpresa: APORTE_EMPRESA_ABIERTA, censo: true });
 if (correr.vencimiento) plan.push({ esc: "vencimiento", n: N_VENCE });
 const donantesDe = (esc, n) => Array.from({ length: n }, (_, i) => cuenta(indiceInicial[esc] + i));
 const familiasDe = (esc) => Array.from({ length: N_FAMILIAS }, (_, i) => cuenta(indiceFamilias[esc] + i));
@@ -215,13 +216,13 @@ const familiasDe = (esc) => Array.from({ length: N_FAMILIAS }, (_, i) => cuenta(
 function necesidades(maxFee) {
   const campanas = BigInt(plan.length);
   const conCenso = BigInt(plan.filter((p) => p.censo).length);
-  const conMatching = BigInt(plan.filter((p) => p.matching).length);
+  const conEmpresa = BigInt(plan.filter((p) => p.aporteEmpresa).length);
   const reqMon = new Map(); // address -> wei necesario
   reqMon.set(fundacion.address, (GAS.crear + GAS.cerrar + 3n * GAS.proponer) * campanas * maxFee);
   reqMon.set(verificadores[0].address, 3n * GAS.confirmar * campanas * maxFee);
   reqMon.set(verificadores[1].address, (3n * GAS.confirmar * campanas + GAS.censo * conCenso) * maxFee);
   reqMon.set(verificadores[2].address, 3n * GAS.confirmar * campanas * maxFee);
-  if (conMatching > 0n) reqMon.set(empresa.address, 2n * GAS.matching * conMatching * maxFee);
+  if (conEmpresa > 0n) reqMon.set(empresa.address, 2n * GAS.aporteEmpresa * conEmpresa * maxFee);
   if (conCenso > 0n) reqMon.set(patrocinador.address, 3n * GAS.loteFamilias * conCenso * maxFee);
   for (const { esc, n } of plan) {
     for (const d of donantesDe(esc, n)) reqMon.set(d.address, (GAS.donar + GAS.reclamar) * maxFee);
@@ -281,13 +282,13 @@ async function fondear() {
   const montosMon = faltantes.map((a) => req.get(a) - saldos.get(a));
   const totalMon = montosMon.reduce((x, y) => x + y, 0n);
 
-  // Tokens: cada donante necesita su monto y la empresa el tope de sus matchings
+  // Tokens: cada donante necesita su monto y la empresa el de sus aportes
   const necesitaCop = new Map();
   const sumar = (a, m) => necesitaCop.set(a, (necesitaCop.get(a) ?? 0n) + m);
-  for (const { esc, montos, matching } of plan) {
+  for (const { esc, montos, aporteEmpresa } of plan) {
     const ds = donantesDe(esc, montos.length);
     ds.forEach((d, i) => sumar(d.address, montos[i]));
-    if (matching) sumar(empresa.address, parseEther(String(matching)));
+    if (aporteEmpresa) sumar(empresa.address, parseEther(String(aporteEmpresa)));
   }
   const tokenDest = [...necesitaCop.keys()];
   const saldosCop = await Promise.all(
@@ -426,13 +427,11 @@ async function registrarCenso(campana, familias) {
   return r.hash;
 }
 
-async function comprometerMatching(campana, topePesos) {
-  const tope = parseEther(String(topePesos));
-  await remitente.enviar(empresa, { address: reporte.MockCOP, abi: ABI.cop, functionName: "approve", args: [campana, tope], etiqueta: "approve matching" });
-  const r = await remitente.enviar(empresa, {
-    address: campana, abi: ABI.campana, functionName: "comprometerMatching", args: [10_000, tope], etiqueta: "comprometerMatching",
-  });
-  log(`✓ Empresa aliada bloqueó ${pesos(tope)} MockCOP en el contrato: duplicará cada donación hasta agotarlos`);
+async function donarComoEmpresa(campana, montoPesos) {
+  const monto = parseEther(String(montoPesos));
+  await remitente.enviar(empresa, { address: reporte.MockCOP, abi: ABI.cop, functionName: "approve", args: [campana, monto], etiqueta: "approve empresa" });
+  const r = await remitente.enviar(empresa, { address: campana, abi: ABI.campana, functionName: "donar", args: [monto], etiqueta: "donar (empresa)" });
+  log(`✓ La empresa aliada donó ${pesos(monto)} MockCOP con su nombre (recibo NFT y rastreo propios)`);
   return r.hash;
 }
 
@@ -635,7 +634,6 @@ async function ejemplosDonantes(campana, donantes, n = 3) {
     const r = await leer(campana, "resumenDonante", [d.address]);
     const partes = r.partePorEtapa.map((p, i) => `${pesos(p)} en ${etapas[i].descripcion.toLowerCase()}${etapas[i].estado === 3 ? "" : " (no pagado)"}`);
     const texto = `De tus ${pesos(r.aporte)}: ${partes.join(", ")}` +
-      (r.matchingGenerado > 0n ? `; además la empresa aliada sumó ${pesos(r.matchingGenerado)} gracias a ti` : "") +
       (r.reembolsado > 0n ? `; reembolsados ${pesos(r.reembolsado)}` : "") +
       (r.pendiente > 0n ? `; pendientes ${pesos(r.pendiente)}` : "");
     out.push({ donante: d.address, texto });
@@ -646,9 +644,9 @@ async function ejemplosDonantes(campana, donantes, n = 3) {
 
 // ─────────────────────────── Escenarios ───────────────────────────
 async function escenarioCompleto(montos) {
-  log(`\n══ Escenario COMPLETO: ${N_DONANTES} donantes + matching, censo de ${N_FAMILIAS} familias, 3 etapas ══`);
+  log(`\n══ Escenario COMPLETO: ${N_DONANTES} donantes + empresa aliada, censo de ${N_FAMILIAS} familias, 3 etapas ══`);
   const metaDonantes = montos.reduce((a, b) => a + b, 0n);
-  const meta = metaDonantes + parseEther(String(MATCHING_COMPLETO));
+  const meta = metaDonantes + parseEther(String(APORTE_EMPRESA_COMPLETO));
   const { direccion: campana, tx } = await crearCampana(
     configCampana({
       nombre: "Inundación en Antioquia (simulación)",
@@ -658,14 +656,14 @@ async function escenarioCompleto(montos) {
   );
   const familias = familiasDe("completo");
   const txCenso = await registrarCenso(campana, familias);
-  const txMatching = await comprometerMatching(campana, MATCHING_COMPLETO);
+  const txEmpresa = await donarComoEmpresa(campana, APORTE_EMPRESA_COMPLETO);
 
   const donantes = donantesDe("completo", N_DONANTES);
   const stats = await donaciones(campana, donantes, montos);
   const infoTrasRecaudo = await leer(campana, "info");
   log(`✓ ${stats.paralelo.cantidad} donaciones paralelas en ${stats.paralelo.ventanaMs} ms → ${stats.paralelo.tps} tx/s; ` +
     `latencia p50 ${stats.paralelo.latenciaMs.p50} ms, p95 ${stats.paralelo.latenciaMs.p95} ms; ${stats.paralelo.bloquesUsados} bloques`);
-  log(`✓ Matching usado: ${pesos(infoTrasRecaudo.matchingUsado)} MockCOP (la empresa duplicó las primeras donaciones)`);
+  log(`✓ Recaudado ${pesos(infoTrasRecaudo.totalRecaudado)} de ${pesos(infoTrasRecaudo.meta)} MockCOP`);
 
   const etapasCfg = await leer(campana, "etapas");
   const zona = ZONAS.completo;
@@ -680,8 +678,8 @@ async function escenarioCompleto(montos) {
   log(`✓ Campaña finalizada: ${pesos(info.totalPagado)} MockCOP pagados directo a proveedores; la fundación no tocó un peso.`);
   const ejemplos = await ejemplosDonantes(campana, donantes);
   return {
-    campana, txCreacion: tx, txCenso, txMatching, meta: meta.toString(), donantes: N_DONANTES, familias: N_FAMILIAS,
-    matchingUsado: info.matchingUsado.toString(), donaciones: stats, etapas, ejemplos, estadoFinal: Number(info.estado),
+    campana, txCreacion: tx, txCenso, txEmpresa, meta: meta.toString(), donantes: N_DONANTES, familias: N_FAMILIAS,
+    aporteEmpresa: parseEther(String(APORTE_EMPRESA_COMPLETO)).toString(), donaciones: stats, etapas, ejemplos, estadoFinal: Number(info.estado),
   };
 }
 
@@ -743,11 +741,11 @@ async function escenarioAbierta(montos) {
   );
   const familias = familiasDe("abierta");
   await registrarCenso(campana, familias);
-  await comprometerMatching(campana, MATCHING_ABIERTA);
+  await donarComoEmpresa(campana, APORTE_EMPRESA_ABIERTA);
   const donantes = donantesDe("abierta", N_ABIERTA);
   const stats = await donaciones(campana, donantes, montos, { cierraAlFinal: false });
   const info = await leer(campana, "info");
-  log(`✓ Recaudado ${pesos(info.totalRecaudado)} de ${pesos(info.meta)} (incluye ${pesos(info.matchingUsado)} de matching). Queda abierta para donar en vivo.`);
+  log(`✓ Recaudado ${pesos(info.totalRecaudado)} de ${pesos(info.meta)} (incluye ${pesos(parseEther(String(APORTE_EMPRESA_ABIERTA)))} de la empresa aliada). Queda abierta para donar en vivo.`);
 
   const tarjetas = familias.map((f, i) => ({
     nombre: `Familia ${String(i + 1).padStart(2, "0")} · ${["Sector A", "Sector B", "Sector C", "Sector D"][i % 4]}`,
@@ -836,7 +834,7 @@ function escribirReporte(resultado) {
   let md = `# Simulación en ${red.name}\n\nFecha: ${resultado.fecha}  \nChain ID: ${red.id}  \nDuración total: ${(resultado.duracionMs / 1000).toFixed(1)} s\n\n`;
   if (c) {
     const p = c.donaciones.paralelo;
-    md += `## Escenario completo\n\n- Campaña: \`${c.campana}\`\n- Donantes: ${c.donantes} · matching de la empresa aliada: ${pesos(BigInt(c.matchingUsado))} MockCOP (meta ${pesos(BigInt(c.meta))})\n`;
+    md += `## Escenario completo\n\n- Campaña: \`${c.campana}\`\n- Donantes: ${c.donantes} · aporte de la empresa aliada: ${pesos(BigInt(c.aporteEmpresa))} MockCOP (meta ${pesos(BigInt(c.meta))})\n`;
     md += `- Censo: ${c.familias} familias registradas por la Junta de Acción Comunal; cada etapa exige que el 30 % confirme con su QR\n`;
     md += `- **${p.cantidad} donaciones en paralelo en ${(p.ventanaMs / 1000).toFixed(2)} s → ${p.tps} tx/s**\n`;
     md += `- Latencia de confirmación (envío → bloque): p50 ${p.latenciaMs.p50} ms · p95 ${p.latenciaMs.p95} ms · máx ${p.latenciaMs.max} ms\n`;
@@ -854,7 +852,7 @@ function escribirReporte(resultado) {
     md += `${f.ejemplos.map((e) => `- \`${e.donante}\`: ${e.texto}`).join("\n")}\n\n`;
   }
   if (a) {
-    md += `## Campaña abierta para la demo en vivo\n\n- Campaña: \`${a.campana}\`\n- Recaudado: ${pesos(BigInt(a.recaudado))} de ${pesos(BigInt(a.meta))} MockCOP (incluye matching)\n- ${a.familias} tarjetas QR de familias listas en el Panel\n\n`;
+    md += `## Campaña abierta para la demo en vivo\n\n- Campaña: \`${a.campana}\`\n- Recaudado: ${pesos(BigInt(a.recaudado))} de ${pesos(BigInt(a.meta))} MockCOP (incluye el aporte de la empresa aliada)\n- ${a.familias} tarjetas QR de familias listas en el Panel\n\n`;
   }
   if (resultado.reputacion) {
     md += `## Reputación on-chain\n\n| Actor | Rol | Índice | Pagadas | Rechazadas | Sobrecostos |\n|---|---|---:|---:|---:|---:|\n`;
@@ -872,7 +870,7 @@ async function main() {
 
   const rng = prng(SEMILLA);
   const montosDe = (esc) => plan.find((p) => p.esc === esc).montos;
-  if (correr.completo) plan.find((p) => p.esc === "completo").montos = generarMontos(N_DONANTES, 10_000_000 - MATCHING_COMPLETO, rng);
+  if (correr.completo) plan.find((p) => p.esc === "completo").montos = generarMontos(N_DONANTES, 10_000_000 - APORTE_EMPRESA_COMPLETO, rng);
   if (correr.falla) plan.find((p) => p.esc === "falla").montos = generarMontos(N_FALLA, 2_000_000, rng);
   if (correr.abierta) plan.find((p) => p.esc === "abierta").montos = generarMontos(N_ABIERTA, 2_400_000, rng);
   if (correr.vencimiento) plan.find((p) => p.esc === "vencimiento").montos = generarMontos(N_VENCE, 1_000_000, rng);

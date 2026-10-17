@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { BOT_TELEGRAM } from "../config";
 import { useAvisosDonante } from "../lib/avisos";
 
-const ICONOS = { pago: "✓", matching: "🎁", reembolso: "↺", sobrecosto: "⚠", rechazo: "✕" };
+const ICONOS = { pago: "✓", reembolso: "↺", sobrecosto: "⚠", rechazo: "✕" };
 const COLORES = {
   pago: "bg-emerald-100 text-emerald-800",
-  matching: "bg-amber-100 text-amber-800",
   reembolso: "bg-sky-100 text-sky-800",
   sobrecosto: "bg-rose-600 text-white",
   rechazo: "bg-rose-100 text-rose-800",

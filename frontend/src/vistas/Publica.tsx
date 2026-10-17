@@ -5,7 +5,7 @@ import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
 import { Mapa, type PuntoMapa } from "../componentes/Mapa";
 import { Qr } from "../componentes/Qr";
-import { useCampana, useNombres, useTodasLasDonaciones, useVotosTodas } from "../lib/datos";
+import { useCampana, useEmpresasAliadas, useNombres, useTodasLasDonaciones, useVotosTodas } from "../lib/datos";
 import { consultaEvidencia, urlIpfs, type EvidenciaCargada } from "../lib/evidencia";
 import { MOTIVO_REEMBOLSO, corta, fecha, mismaDireccion, pesos } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
@@ -31,10 +31,11 @@ const TONOS: Record<Hito["tono"], string> = {
  * o una veeduría ciudadana. Todo sale de la cadena y del almacén de evidencias.
  */
 export function VistaPublica({ campana }: { campana?: Address }) {
-  const { info, etapas, matchings } = useCampana(campana);
+  const { info, etapas } = useCampana(campana);
   const { data: donaciones } = useTodasLasDonaciones(campana, info?.numeroDonaciones);
   const votos = useVotosTodas(campana, etapas?.length ?? 0);
-  const nombre = useNombres([...(etapas ?? []).map((e) => e.proveedor), ...matchings.map((m) => m.empresa), ...(info?.verificadores ?? [])]);
+  const { aliadas, esEmpresa } = useEmpresasAliadas(campana);
+  const nombre = useNombres([...(etapas ?? []).map((e) => e.proveedor), ...(info?.verificadores ?? [])]);
   const avisar = useAvisar();
 
   // Todas las evidencias de la campaña (facturas y actas de cada etapa)
@@ -67,11 +68,12 @@ export function VistaPublica({ campana }: { campana?: Address }) {
   const hitos = useMemo<Hito[]>(() => {
     if (!info || !etapas) return [];
     const h: Hito[] = [{ fecha: Number(info.fechaCreacion), icono: "★", titulo: "Se abrió la campaña", detalle: `Meta ${pesos(info.meta)} MockCOP`, tono: "neutro" }];
-    for (const m of matchings) {
-      h.push({ fecha: Number(m.fecha), icono: "🎁", titulo: `${nombre(m.empresa) ?? "Una empresa aliada"} se comprometió a ${m.proporcionBps === 10_000 ? "duplicar" : "multiplicar"} donaciones`, detalle: `${pesos(m.usado)} MockCOP sumados`, tono: "neutro" });
+    for (const e of aliadas) {
+      const primera = donaciones?.find((d) => mismaDireccion(d.donante, e.cuenta));
+      if (primera) h.push({ fecha: Number(primera.fecha), icono: "🏢", titulo: `${e.nombre || "Una empresa"} se sumó como empresa aliada`, detalle: `Aportó ${pesos(e.aporte)} MockCOP a su nombre`, tono: "neutro" });
     }
     if (donaciones?.length) {
-      const propias = donaciones.filter((d) => !matchings.some((m) => mismaDireccion(m.empresa, d.donante)));
+      const propias = donaciones.filter((d) => !esEmpresa(d.donante));
       if (propias[0]) h.push({ fecha: Number(propias[0].fecha), icono: "♥", titulo: "Primera donación", detalle: `${pesos(propias[0].monto)} MockCOP`, tono: "neutro" });
       let acumulado = 0n;
       const marcas = [25n, 50n, 75n];
@@ -111,7 +113,8 @@ export function VistaPublica({ campana }: { campana?: Address }) {
       h.push({ fecha: Number(info.fechaReembolso), icono: "↺", titulo: "Reembolso activado", detalle: `Porque ${MOTIVO_REEMBOLSO[info.motivoReembolso]}. Lo no pagado vuelve a los donantes.`, tono: "malo" });
     }
     return h.sort((a, b) => a.fecha - b.fecha);
-  }, [info, etapas, matchings, donaciones, nombre]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [info, etapas, aliadas.map((e) => `${e.cuenta}:${e.aporte}`).join(), donaciones, nombre]);
 
   if (!campana) return <Vacio>No hay campañas todavía.</Vacio>;
   const enlace = `${window.location.origin}/#/campana/${campana}`;
@@ -128,8 +131,8 @@ export function VistaPublica({ campana }: { campana?: Address }) {
   function exportarCsv() {
     const filas = [["tipo", "fecha", "cuenta", "monto_mockcop", "bloque", "detalle"]];
     for (const d of donaciones ?? []) {
-      const emp = matchings.some((m) => mismaDireccion(m.empresa, d.donante));
-      filas.push([emp ? "matching" : "donacion", new Date(Number(d.fecha) * 1000).toISOString(), d.donante, (Number(d.monto) / 1e18).toFixed(0), d.bloque.toString(), emp ? nombre(d.donante) ?? "" : ""]);
+      const emp = aliadas.find((e) => mismaDireccion(e.cuenta, d.donante));
+      filas.push([emp ? "empresa" : "donacion", new Date(Number(d.fecha) * 1000).toISOString(), d.donante, (Number(d.monto) / 1e18).toFixed(0), d.bloque.toString(), emp?.nombre ?? ""]);
     }
     for (const [i, e] of (etapas ?? []).entries()) {
       if (e.estado === 3)
@@ -139,7 +142,7 @@ export function VistaPublica({ campana }: { campana?: Address }) {
     descargar(`rastro-${campana!.slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
   }
   function exportarJson() {
-    const datos = { campana: info, etapas, matchings, donaciones, votos, evidencias: cargadas.map((c) => ({ uri: c.uri, hash: c.hash, etapa: c.etapa, integridad: c.integridad, documento: c.documento })) };
+    const datos = { campana: info, etapas, empresasAliadas: aliadas, donaciones, votos, evidencias: cargadas.map((c) => ({ uri: c.uri, hash: c.hash, etapa: c.etapa, integridad: c.integridad, documento: c.documento })) };
     descargar(`rastro-${campana!.slice(0, 10)}.json`, JSON.stringify(datos, (_, v) => (typeof v === "bigint" ? v.toString() : v), 2), "application/json");
   }
 

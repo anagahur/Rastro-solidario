@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { Direccion, Seccion, Vacio } from "../componentes/Comunes";
 import { tonoIndice } from "../componentes/Reputacion";
-import { useActores, useReputacion, type Reputacion } from "../lib/datos";
+import { useActores, useAportesEnCampanas, useReputacion, type Reputacion } from "../lib/datos";
 import { fecha, pesos } from "../lib/formato";
 
 const PESTANAS = [
@@ -22,7 +22,14 @@ export function VistaReputacion() {
   const [pestana, setPestana] = useState<Pestana>("proveedores");
   const lista = actores[pestana];
   const rep = useReputacion([...actores.fundaciones, ...actores.proveedores, ...actores.verificadores, ...actores.empresas].map((a) => a.cuenta));
-  const ordenada = [...lista].sort((a, b) => (rep(b.cuenta)?.indice ?? -1) - (rep(a.cuenta)?.indice ?? -1));
+  const aportes = useAportesEnCampanas(actores.empresas.map((e) => e.cuenta));
+  const ordenada = [...lista].sort((a, b) => {
+    if (pestana === "empresas") {
+      const d = aportes(b.cuenta).total - aportes(a.cuenta).total;
+      return d > 0n ? 1 : d < 0n ? -1 : 0;
+    }
+    return (rep(b.cuenta)?.indice ?? -1) - (rep(a.cuenta)?.indice ?? -1);
+  });
 
   return (
     <div className="space-y-6">
@@ -49,7 +56,7 @@ export function VistaReputacion() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ordenada.map((a) => (
-            <TarjetaActor key={a.cuenta} cuenta={a.cuenta} nombre={a.nombre} rep={rep(a.cuenta)} tipo={pestana} />
+            <TarjetaActor key={a.cuenta} cuenta={a.cuenta} nombre={a.nombre} rep={rep(a.cuenta)} tipo={pestana} aporte={pestana === "empresas" ? aportes(a.cuenta) : undefined} />
           ))}
         </div>
       )}
@@ -57,7 +64,7 @@ export function VistaReputacion() {
   );
 }
 
-function TarjetaActor({ cuenta, nombre, rep, tipo }: { cuenta: Address; nombre: string; rep?: Reputacion; tipo: Pestana }) {
+function TarjetaActor({ cuenta, nombre, rep, tipo, aporte }: { cuenta: Address; nombre: string; rep?: Reputacion; tipo: Pestana; aporte?: { total: bigint; campanas: number } }) {
   const indice = rep?.indice ?? null;
   const datos: [string, string | number][] =
     tipo === "fundaciones"
@@ -82,8 +89,8 @@ function TarjetaActor({ cuenta, nombre, rep, tipo }: { cuenta: Address; nombre: 
         : tipo === "verificadores"
           ? [["Votos emitidos", rep?.votos ?? 0]]
           : [
-              ["Campañas apoyadas", rep?.campanas ?? 0],
-              ["Aportado con matching", pesos(rep?.monto ?? 0n)],
+              ["Campañas apoyadas", aporte?.campanas ?? 0],
+              ["Aportado", `${pesos(aporte?.total ?? 0n)} MockCOP`],
             ];
   const mostrarIndice = tipo === "fundaciones" || tipo === "proveedores";
 
@@ -117,7 +124,11 @@ function TarjetaActor({ cuenta, nombre, rep, tipo }: { cuenta: Address; nombre: 
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-[11px] text-stone-400">{rep && rep.ultimaActividad > 0n ? `Última actividad: ${fecha(rep.ultimaActividad)}` : "Sin actividad todavía"}</p>
+      {tipo === "empresas" ? (
+        <p className="mt-3 text-[11px] text-stone-400">{aporte && aporte.total > 0n ? "Donaciones a su nombre en las campañas oficiales." : "Sin aportes todavía"}</p>
+      ) : (
+        <p className="mt-3 text-[11px] text-stone-400">{rep && rep.ultimaActividad > 0n ? `Última actividad: ${fecha(rep.ultimaActividad)}` : "Sin actividad todavía"}</p>
+      )}
     </article>
   );
 }

@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseEther, parseEventLogs, type Address } from "viem";
-import { useAccount } from "wagmi";
-import { campanaEmergenciaAbi, campanaFactoryAbi, mockCOPAbi, registroActoresAbi } from "../abis";
-import { DIRECCIONES } from "../config";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
+import { campanaEmergenciaAbi, campanaFactoryAbi, registroActoresAbi } from "../abis";
+import { DIRECCIONES, REFRESCO_MS } from "../config";
+import { DonarConWallet } from "./Donar";
 import { Etapas } from "../componentes/Campana";
 import { Barra, Direccion, Insignia, Seccion, Vacio } from "../componentes/Comunes";
 import { SubirEvidencia, type EvidenciaLista } from "../componentes/Evidencia";
 import { InsigniaConfianza } from "../componentes/Reputacion";
-import { useActores, useAhora, useCampana, useNombres, useReputacion, useRoles, useSaldoCop } from "../lib/datos";
+import { useActores, useAhora, useCampana, useNombres, useReputacion, useRoles } from "../lib/datos";
 import { ESTADO_CAMPANA, analizarPrecio, esDireccion, mismaDireccion, pesos, porcentaje, tiempoRestante } from "../lib/formato";
 import { generarTarjetas, guardarTarjetas, useTarjetas } from "../lib/tarjetas";
 import { useEscribir } from "../lib/useEscribir";
@@ -84,6 +85,16 @@ function AccionesFundacion({ campana }: { campana: Address }) {
   useEffect(() => {
     if (!proveedor && proveedores[0]) setProveedor(proveedores[0].cuenta);
   }, [proveedores, proveedor]);
+  // Quien donó a la campaña (p. ej. una empresa aliada que también es proveedora) no debería
+  // cobrarle. El contrato solo lo bloquea para las empresas con matching: aquí se bloquea para todos.
+  const aporteProveedor =
+    (useReadContract({
+      address: campana,
+      abi: campanaEmergenciaAbi,
+      functionName: "aportes",
+      args: [proveedor as Address],
+      query: { enabled: esDireccion(proveedor) },
+    }).data as bigint | undefined) ?? 0n;
   if (!info || !etapas) return null;
   const c = { address: campana, abi: campanaEmergenciaAbi } as const;
   const idx = Number(info.etapaActual);
@@ -100,8 +111,8 @@ function AccionesFundacion({ campana }: { campana: Address }) {
         {info.estado === 0 && (
           <div className="rounded-xl bg-stone-50 p-4">
             <p className="text-sm text-stone-600">
-              Recaudado {pesos(info.totalRecaudado)} de {pesos(info.meta)}. Al cerrar el recaudo se fijan los montos de cada etapa, el matching que no se usó vuelve a las empresas y
-              empieza a correr el plazo de la primera etapa.
+              Recaudado {pesos(info.totalRecaudado)} de {pesos(info.meta)}. Al cerrar el recaudo se fijan los montos de cada etapa y empieza a correr el plazo de la primera
+              etapa.
             </p>
             <button
               className="btn-primario mt-3"
@@ -118,7 +129,7 @@ function AccionesFundacion({ campana }: { campana: Address }) {
             className="space-y-3 rounded-xl bg-stone-50 p-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (!evidencia || !esDireccion(proveedor) || faltanUnidades) return;
+              if (!evidencia || !esDireccion(proveedor) || faltanUnidades || aporteProveedor > 0n) return;
               ejecutar({
                 ...c,
                 functionName: "proponerDesembolso",
@@ -153,6 +164,11 @@ function AccionesFundacion({ campana }: { campana: Address }) {
             <div className="text-xs">
               <InsigniaConfianza rep={rep(proveedor)} rol="proveedor" />
             </div>
+            {aporteProveedor > 0n && (
+              <p className="rounded-lg bg-rose-50 p-2 text-xs text-rose-800">
+                Conflicto de interés: este proveedor donó {pesos(aporteProveedor)} MockCOP a la campaña. No puede cobrar en ella; elige otro proveedor.
+              </p>
+            )}
             <label className="block">
               <span className="etiqueta">
                 Unidades en la factura{etapa.precioReferencia > 0n ? ` (${etapa.unidad}) · obligatorio` : " (opcional)"}
@@ -177,7 +193,7 @@ function AccionesFundacion({ campana }: { campana: Address }) {
               titulo={`Factura · etapa ${idx + 1}: ${etapa.descripcion}`}
               onLista={setEvidencia}
             />
-            <button className="btn-primario" disabled={!!pendiente || !evidencia || !proveedor || faltaCenso || faltanUnidades}>
+            <button className="btn-primario" disabled={!!pendiente || !evidencia || !proveedor || faltaCenso || faltanUnidades || aporteProveedor > 0n}>
               Proponer desembolso
             </button>
           </form>
@@ -562,67 +578,51 @@ function CensoBeneficiarios({ campana }: { campana: Address }) {
   );
 }
 
-// ───────────────────────── Empresa aliada (matching) ─────────────────────────
+// ───────────────────────── Empresa aliada ─────────────────────────
 
 function AccionesEmpresa({ campana }: { campana: Address }) {
   const { address } = useAccount();
-  const { info, matchings } = useCampana(campana);
-  const saldo = useSaldoCop();
-  const { ejecutar, pendiente } = useEscribir();
-  const [proporcion, setProporcion] = useState(10_000);
-  const [tope, setTope] = useState("2000000");
+  const { info } = useCampana(campana);
+  const [monto, setMonto] = useState("1000000");
+  const c = { address: campana, abi: campanaEmergenciaAbi } as const;
+  const mio = useReadContracts({
+    contracts: [
+      { ...c, functionName: "aportes", args: [address!] },
+      { ...c, functionName: "reciboDe", args: [address!] },
+    ],
+    query: { enabled: !!address, refetchInterval: REFRESCO_MS },
+  });
   if (!info) return null;
-  const mio = matchings.find((m) => mismaDireccion(m.empresa, address));
+  const aporte = (mio.data?.[0]?.result as bigint | undefined) ?? 0n;
+  const recibo = (mio.data?.[1]?.result as bigint | undefined) ?? 0n;
+  const pesosNum = Number(monto) || 0;
   const restante = info.meta - info.totalRecaudado;
-  const wei = parseEther(String(Number(tope) || 0));
-
-  async function comprometer() {
-    const ok = await ejecutar({ address: DIRECCIONES.cop, abi: mockCOPAbi, functionName: "approve", args: [campana, wei], etiqueta: "Autorizar MockCOP", exito: "Autorización lista" });
-    if (!ok) return;
-    await ejecutar({
-      address: campana,
-      abi: campanaEmergenciaAbi,
-      functionName: "comprometerMatching",
-      args: [proporcion, wei],
-      etiqueta: "Comprometer matching",
-      exito: "Matching activo: cada donación nueva se multiplica",
-    });
-  }
 
   return (
-    <Seccion titulo="Matching de tu empresa" descripcion="Bloquea fondos en el contrato para multiplicar cada donación. Lo que no se use vuelve a tu empresa al cerrar el recaudo.">
-      {mio ? (
-        <div className="space-y-2 text-sm">
+    <Seccion
+      titulo="Aporte de tu empresa"
+      descripcion="Tu empresa dona como cualquier persona: el aporte queda a su nombre en la cadena, recibe su recibo NFT y puede ver en qué se gasta cada peso."
+    >
+      {aporte > 0n && (
+        <div className="mb-4 space-y-2 rounded-xl bg-stone-50 p-3 text-sm">
           <p>
-            Comprometiste {pesos(mio.tope)} MockCOP ({mio.proporcionBps / 100} % de cada donación). Usado: <strong>{pesos(mio.usado)}</strong>.
+            Tu empresa aportó <strong>{pesos(aporte)} MockCOP</strong> a esta campaña ({porcentaje(aporte, info.totalRecaudado).toFixed(1)} % del total)
+            {recibo > 0n ? ` · recibo NFT #${recibo}` : ""}.
           </p>
-          <Barra valor={porcentaje(mio.usado, mio.tope)} className="bg-amber-500" />
-          <p className="text-xs text-stone-500">Lo usado cuenta como tu aporte: si la campaña entra en reembolso, recuperas tu parte como cualquier donante.</p>
+          <a className="btn-secundario block w-full text-center" href={`#/rastreo/${campana}/${address}`}>
+            Ver en qué se gasta el aporte →
+          </a>
         </div>
-      ) : info.estado !== 0 ? (
-        <Vacio>La campaña ya no recauda: el matching solo se puede comprometer mientras recibe donaciones.</Vacio>
+      )}
+      {info.estado !== 0 ? (
+        <Vacio>La campaña ya no recibe donaciones.</Vacio>
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            {[
-              [5000, "+50 %"],
-              [10_000, "Duplica"],
-              [20_000, "Triplica"],
-            ].map(([bps, t]) => (
-              <label key={bps} className={`cursor-pointer rounded-xl border p-2 text-center font-semibold ${proporcion === bps ? "border-amber-500 bg-amber-50" : "border-stone-200"}`}>
-                <input type="radio" className="sr-only" checked={proporcion === bps} onChange={() => setProporcion(bps as number)} />
-                {t}
-              </label>
-            ))}
-          </div>
           <label className="block">
-            <span className="etiqueta">Tope (MockCOP) · máximo {pesos(restante)}</span>
-            <input className="campo" inputMode="numeric" value={tope} onChange={(e) => setTope(e.target.value.replace(/\D/g, ""))} />
+            <span className="etiqueta">Monto a donar (MockCOP) · faltan {pesos(restante)} para la meta</span>
+            <input className="campo" inputMode="numeric" value={monto} onChange={(e) => setMonto(e.target.value.replace(/\D/g, ""))} />
           </label>
-          {saldo !== undefined && saldo < wei && <p className="rounded-lg bg-rose-50 p-2 text-xs text-rose-800">Tu saldo ({pesos(saldo)}) no alcanza.</p>}
-          <button className="btn-primario w-full" disabled={!!pendiente || wei === 0n || wei > restante} onClick={comprometer}>
-            Bloquear {pesos(wei)} y activar matching
-          </button>
+          <DonarConWallet campana={campana} wei={parseEther(String(pesosNum))} restante={restante} pesosNum={pesosNum} />
         </div>
       )}
     </Seccion>
