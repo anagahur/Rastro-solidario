@@ -188,7 +188,4 @@
   .nota-info {
     @apply nota bg-info-50 text-info-900 ring-info-200;
   }
-  .nota-matching {
-    @apply nota bg-gradient-to-r from-alerta-100 via-alerta-50 to-white text-alerta-950 ring-alerta-200;
-  }
 }

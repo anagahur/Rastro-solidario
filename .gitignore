@@ -19,3 +19,5 @@ reports/familias-*.json
 frontend/public/familias-demo.json
 frontend/tsconfig.tsbuildinfo
 pruebas-e2e/node_modules/
+.env.vercel
+.vercel/

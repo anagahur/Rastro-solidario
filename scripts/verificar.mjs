@@ -6,15 +6,16 @@
 //   node scripts/verificar.mjs --seco   arma los payloads sin enviarlos
 import fs from "node:fs";
 import path from "node:path";
-import { createPublicClient, encodeAbiParameters, http } from "viem";
-import { RAIZ, leerReporte, redPorNombre } from "./lib/entorno.mjs";
+import { createPublicClient, encodeAbiParameters } from "viem";
+import { RAIZ, leerReporte, redPorNombre, transporteRed } from "./lib/entorno.mjs";
 import { salida } from "./lib/foundry.mjs";
 
 const API = "https://agents.devnads.com/v1/verify";
 const seco = process.argv.includes("--seco");
 const chainId = Number(process.argv.find((a) => /^\d+$/.test(a)) ?? 10143);
 const r = leerReporte(chainId);
-const cliente = createPublicClient({ chain: redPorNombre(String(chainId)), transport: http() });
+const red = redPorNombre(String(chainId));
+const cliente = createPublicClient({ chain: red, transport: transporteRed(red) });
 const raizWsl = "/mnt/" + RAIZ.replace(/\\/g, "/").replace(/^([A-Za-z]):/, (_, d) => d.toLowerCase());
 
 const artefacto = (n) => JSON.parse(fs.readFileSync(path.join(RAIZ, "contracts", "out", `${n}.sol`, `${n}.json`), "utf8"));

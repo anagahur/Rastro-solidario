@@ -19,6 +19,7 @@
     "simular": "node scripts/simular.mjs",
     "simular:local": "node scripts/simular.mjs --red local",
     "simular:monad": "node scripts/simular.mjs --red monad",
+    "recargar:monad": "node scripts/recargar.mjs --red monad",
     "demo": "node scripts/simular.mjs --red local --escenario todos",
     "pinata": "node scripts/probar-pinata.mjs",
     "env:local": "node scripts/configurar-env.mjs 31337",
@@ -26,7 +27,11 @@
     "notificador": "node scripts/notificador.mjs --red local",
     "notificador:monad": "node scripts/notificador.mjs --red monad",
     "dev": "pnpm --filter frontend dev",
-    "build": "pnpm --filter frontend build"
+    "build": "pnpm --filter frontend build",
+    "pasarela:monad": "node scripts/pasarela.mjs --red monad",
+    "evidencias:publicar": "node scripts/publicar-evidencias.mjs --red monad",
+    "vercel:env": "node scripts/vercel-env.mjs",
+    "url:monad": "node scripts/url-recibo.mjs --red monad"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.1.0",

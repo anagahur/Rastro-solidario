@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Address } from "viem";
 import type { InfoCampana, Reputacion } from "../lib/datos";
-import { useAhora, useCampana, useNombres, useReputacion } from "../lib/datos";
+import { useAhora, useCampana, useEmpresasAliadas, useNombres, useReputacion } from "../lib/datos";
 import { ESTADO_CAMPANA, MOTIVO_REEMBOLSO, VOTO, analizarPrecio, etiquetaEtapa, corta, fecha, pesos, porcentaje, tiempoRestante } from "../lib/formato";
 import { Barra, Direccion, Insignia } from "./Comunes";
 import { VerEvidencia } from "./Evidencia";
@@ -32,8 +32,9 @@ export function SelectorCampana({
 }
 
 export function ResumenCampana({ direccion }: { direccion: Address }) {
-  const { info, matchings, etapas } = useCampana(direccion);
-  const nombre = useNombres([info?.fundacion, ...matchings.map((m) => m.empresa)]);
+  const { info, etapas } = useCampana(direccion);
+  const { aliadas } = useEmpresasAliadas(direccion);
+  const nombre = useNombres([info?.fundacion]);
   const rep = useReputacion([info?.fundacion]);
   const ahora = useAhora(5000);
   if (!info) return <div className="h-80 animate-pulse rounded-2xl bg-gradient-to-br from-marca-200/60 to-neutro-200/60" />;
@@ -48,8 +49,8 @@ export function ResumenCampana({ direccion }: { direccion: Address }) {
   const familiasRequeridas = enRevision
     ? etapaActual!.beneficiariosRequeridos
     : Math.ceil((Number(info.numeroBeneficiarios) * info.quorumBeneficiariosBps) / 10_000);
-  const empresasConMatching = matchings.filter((m) => m.usado > 0n).length;
-  const donantes = Number(info.numeroDonantes) - empresasConMatching;
+  // Las empresas aliadas donan como cualquiera: se cuentan aparte de las personas
+  const donantes = Math.max(0, Number(info.numeroDonantes) - aliadas.length);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-neutro-200/80 bg-white shadow-suave">
@@ -80,25 +81,33 @@ export function ResumenCampana({ direccion }: { direccion: Address }) {
       <div className="space-y-5 px-5 py-5 sm:px-7">
       <TarjetaFundacion cuenta={info.fundacion} nombre={nombre(info.fundacion)} rep={rep(info.fundacion)} />
 
-      {matchings.length > 0 && (
-        <ul className="space-y-2">
-          {matchings.map((m) => {
-            const libre = m.tope - m.usado;
-            const activo = info.estado === 0 && libre > 0n;
-            const que = m.proporcionBps === 10_000 ? "duplica cada donación" : `suma el ${m.proporcionBps / 100} % de cada donación`;
-            return (
-              <li key={m.empresa} className={activo ? "nota-matching" : "nota bg-neutro-50 text-neutro-700 ring-neutro-200"}>
-                <p className="mb-2 flex items-start gap-2">
-                  <span aria-hidden>🎁</span>
-                  <span>
-                    <strong>{nombre(m.empresa) ?? corta(m.empresa)}</strong> {activo ? `${que} · quedan ${pesos(libre)} de ${pesos(m.tope)} MockCOP` : `sumó ${pesos(m.usado)} MockCOP a las donaciones`}
+      {aliadas.length > 0 && (
+        <div className="rounded-xl bg-alerta-50/60 p-4 ring-1 ring-inset ring-alerta-200/70">
+          <p className="rotulo text-alerta-800">Empresas aliadas</p>
+          <ul className="mt-2.5 space-y-2.5">
+            {aliadas.map((e) => {
+              const parte = porcentaje(e.aporte, info.totalRecaudado);
+              return (
+                <li key={e.cuenta} className="flex items-center gap-3 text-sm">
+                  <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-base shadow-sm ring-1 ring-inset ring-alerta-200">
+                    🏢
                   </span>
-                </p>
-                {activo && <Barra valor={porcentaje(m.usado, m.tope)} className="bg-gradient-to-r from-alerta-400 to-alerta-600" />}
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                      <a className="font-semibold text-neutro-900 hover:text-marca-700 hover:underline" href={`#/rastreo/${direccion}/${e.cuenta}`}>
+                        {e.nombre || corta(e.cuenta)}
+                      </a>
+                      <span className="text-neutro-600">
+                        aportó <strong className="font-display text-neutro-900">${pesos(e.aporte)}</strong> · {parte.toFixed(1)} %
+                      </span>
+                    </div>
+                    <Barra valor={parte} className="bg-gradient-to-r from-alerta-400 to-alerta-600" />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -174,7 +183,7 @@ export function ResumenCampana({ direccion }: { direccion: Address }) {
         </Dato>
 
         {/* Donantes */}
-        <Dato titulo="Donantes" extra={empresasConMatching > 0 ? `+ ${empresasConMatching} ${empresasConMatching === 1 ? "empresa aliada" : "empresas aliadas"}` : undefined}>
+        <Dato titulo="Donantes" extra={aliadas.length > 0 ? `+ ${aliadas.length} ${aliadas.length === 1 ? "empresa aliada" : "empresas aliadas"}` : undefined}>
           <dd className="font-display text-xl font-extrabold text-neutro-900">
             {donantes} <span className="text-sm font-semibold text-neutro-400">{donantes === 1 ? "persona donó" : "personas donaron"}</span>
           </dd>

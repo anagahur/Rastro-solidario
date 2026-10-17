@@ -43,6 +43,7 @@ const ROLES = [
   [7, "Proveedor 3 (Constructora)"],
   [8, "Empresa aliada (matching)"],
   [9, "Patrocinador de gas (relayer)"],
+  [10, "Pasarela Nequi/PSE (dueña de MockCOP)"],
 ];
 
 const cliente = createPublicClient({ chain: red, transport: http() });

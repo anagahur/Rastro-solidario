@@ -20,7 +20,7 @@ La fundación no tiene ningún botón para cobrar.
 
 | # | Qué mostrar | Frase |
 |---|---|---|
-| 1 | **Donar con Nequi** en la campaña de Mocoa (sin MetaMask). Aparece «🎁 tus 20.000 se convierten en 40.000» | "Mi mamá puede donar sin saber qué es blockchain. Y la empresa aliada duplica." |
+| 1 | **Donar con Nequi** en la campaña de Mocoa (sin MetaMask). Arriba se ve la empresa aliada con su aporte | "Mi mamá puede donar sin saber qué es blockchain. Y las empresas donan con su nombre: también pueden seguir cada peso." |
 | 2 | Pantalla de éxito → «Ver a dónde va mi dinero» | "Esta es mi plata, en un contrato que nadie puede tocar." |
 | 3 | Panel: la fundación cierra el recaudo y propone la etapa 1 con **pocas unidades** → banner rojo de **sobrecosto** | "Si la factura infla el precio, el contrato lo detecta solo y exige un verificador más." |
 | 4 | Verificadores confirman con **foto y GPS** | "La evidencia queda pública y con hash: no se puede cambiar después." |

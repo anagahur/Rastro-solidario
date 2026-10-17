@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseEther, parseSignature, type Address } from "viem";
 import { useAccount, usePublicClient, useSignTypedData, useSwitchChain } from "wagmi";
@@ -7,10 +7,10 @@ import { CHAIN_ID, DIRECCIONES, ES_MONAD } from "../config";
 import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
 import { RespaldoPalabras } from "../componentes/Recuperacion";
-import { useBilleteraInvisible, donarSinCripto, type PasoDonacion } from "../lib/billeteraInvisible";
-import { useCampana, useNombres, useSaldoCop } from "../lib/datos";
+import { ErrorReenvio, useBilleteraInvisible, donarSinCripto, type PagoPrevio, type PasoDonacion } from "../lib/billeteraInvisible";
+import { useCampana, useEmpresasAliadas, useNombres, useSaldoCop } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
-import { corta, fecha, mismaDireccion, pesos } from "../lib/formato";
+import { corta, fecha, pesos } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
 import { navegar } from "../lib/ruta";
 import { useEscribir } from "../lib/useEscribir";
@@ -74,27 +74,13 @@ function BotonDonarMovil({ campana }: { campana: Address }) {
 }
 
 function CajaDonar({ campana }: { campana: Address }) {
-  const { info, matchings } = useCampana(campana);
+  const { info } = useCampana(campana);
   const [modo, setModo] = useState<"facil" | "wallet">("facil");
   const [monto, setMonto] = useState("20000");
   const pesosNum = Number(monto.replace(/\D/g, "")) || 0;
   const wei = parseEther(String(pesosNum));
   const restante = info ? info.meta - info.totalRecaudado : 0n;
   const abierta = info?.estado === 0;
-
-  // Cuánto suma el matching a esta donación (misma regla que el contrato, en orden).
-  let extra = 0n;
-  let quedan = restante - (wei > restante ? restante : wei);
-  for (const m of matchings) {
-    const libre = m.tope - m.usado;
-    let e = (wei * BigInt(m.proporcionBps)) / 10_000n;
-    if (e > libre) e = libre;
-    if (e > quedan) e = quedan;
-    if (e > 0n) {
-      extra += e;
-      quedan -= e;
-    }
-  }
 
   return (
     <Seccion titulo="Donar" descripcion="Tu donación queda en el contrato, no en la cuenta de la fundación.">
@@ -141,17 +127,9 @@ function CajaDonar({ campana }: { campana: Address }) {
             </div>
           </div>
 
-          {extra > 0n && (
-            <p className="nota-matching flex items-start gap-2">
-              <span aria-hidden className="text-base leading-5">🎁</span>
-              <span>
-                Con el matching de las empresas aliadas, tus {pesos(wei)} se convierten en <strong className="text-alerta-900">{pesos(wei + extra)}</strong> para la emergencia.
-              </span>
-            </p>
-          )}
           {wei > restante && restante > 0n && <p className="nota-alerta text-xs">Faltan {pesos(restante)} para la meta: solo se cobrará esa cantidad.</p>}
 
-          {modo === "facil" ? <DonarFacil campana={campana} montoPesos={pesosNum} extra={extra} /> : <DonarConWallet campana={campana} wei={wei} restante={restante} pesosNum={pesosNum} />}
+          {modo === "facil" ? <DonarFacil campana={campana} montoPesos={pesosNum} /> : <DonarConWallet campana={campana} wei={wei} restante={restante} pesosNum={pesosNum} />}
         </div>
       )}
     </Seccion>
@@ -160,6 +138,15 @@ function CajaDonar({ campana }: { campana: Address }) {
 
 // ─────────────────────────── Sin cripto (Nequi / PSE simulado) ───────────────────────────
 
+/** Mensaje corto para la persona: los errores de red del RPC traen URL y cuerpo de la petición. */
+function mensajeDonacion(e: unknown): string {
+  const m = (e as { shortMessage?: string; message?: string })?.shortMessage || (e as Error)?.message || String(e);
+  if (/took too long|timed out|timeout|HTTP request failed|Failed to fetch|fetch failed|limited to/i.test(m)) {
+    return "La red de Monad está respondiendo lento. Espera unos segundos e inténtalo de nuevo.";
+  }
+  return m.split("\n")[0];
+}
+
 const PASOS: { id: PasoDonacion["paso"]; texto: string }[] = [
   { id: "pago", texto: "Pago aprobado" },
   { id: "acreditado", texto: "Pesos convertidos a MockCOP" },
@@ -167,19 +154,23 @@ const PASOS: { id: PasoDonacion["paso"]; texto: string }[] = [
   { id: "registrado", texto: "Registrada en la blockchain · gas pagado por Rastro Solidario" },
 ];
 
-function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPesos: number; extra: bigint }) {
+function DonarFacil({ campana, montoPesos }: { campana: Address; montoPesos: number }) {
   const qc = useQueryClient();
   const avisar = useAvisar();
   const { direccion } = useBilleteraInvisible();
   const [metodo, setMetodo] = useState<"nequi" | "pse">("nequi");
   const [celular, setCelular] = useState("");
   const [banco, setBanco] = useState("Bancolombia");
-  const [fase, setFase] = useState<"formulario" | "pasarela" | "procesando" | "listo">("formulario");
+  const [fase, setFase] = useState<"formulario" | "pasarela" | "procesando" | "error" | "listo">("formulario");
+  const [error, setError] = useState("");
   const [hechos, setHechos] = useState<Set<string>>(new Set());
-  const [resultado, setResultado] = useState<{ referencia: string; hash: string; cuenta: Address; extra: bigint } | null>(null);
+  const [resultado, setResultado] = useState<{ referencia: string; hash?: string; cuenta: Address } | null>(null);
+  // Pago ya acreditado en un intento que falló después: "Intentar de nuevo" no vuelve a cobrar.
+  const pagoPrevio = useRef<PagoPrevio | undefined>(undefined);
   useEffect(() => {
     setFase("formulario");
     setResultado(null);
+    pagoPrevio.current = undefined;
   }, [campana]);
 
   const valido = montoPesos >= 1000 && montoPesos <= 5_000_000 && (metodo === "pse" || /^3\d{9}$/.test(celular.replace(/\D/g, "")));
@@ -187,15 +178,16 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
   async function pagar() {
     setFase("procesando");
     setHechos(new Set());
-    const extraAlPagar = extra;
     try {
-      const r = await donarSinCripto(campana, montoPesos, metodo, (p) => setHechos((h) => new Set([...h, p.paso])));
-      setResultado({ referencia: r.referencia, hash: r.hash, cuenta: r.cuenta, extra: extraAlPagar });
+      const r = await donarSinCripto(campana, montoPesos, metodo, (p) => setHechos((h) => new Set([...h, p.paso])), pagoPrevio.current);
+      pagoPrevio.current = undefined;
+      setResultado({ referencia: r.referencia, hash: r.hash, cuenta: r.cuenta });
       setFase("listo");
       await qc.invalidateQueries();
     } catch (e) {
-      avisar("error", "No se pudo completar la donación", (e as Error).message);
-      setFase("formulario");
+      if (e instanceof ErrorReenvio && e.pagoPrevio) pagoPrevio.current = e.pagoPrevio;
+      setError(mensajeDonacion(e) + (pagoPrevio.current ? " Tu pago ya quedó acreditado: al reintentar no se te cobra de nuevo." : ""));
+      setFase("error");
     }
   }
 
@@ -207,7 +199,6 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
           ✓
         </span>
         <p className="font-display text-xl font-extrabold text-exito-900">¡Gracias! Donaste ${montoPesos.toLocaleString("es-CO")} 💚</p>
-        {resultado.extra > 0n && <p className="text-sm text-exito-800">La empresa aliada sumó {pesos(resultado.extra)} más gracias a ti.</p>}
         <p className="text-sm text-exito-800">
           Referencia del pago: <strong>{resultado.referencia}</strong>. Tu donación ya está en el contrato y nadie la puede mover sin verificación.
         </p>
@@ -225,7 +216,7 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
     );
   }
 
-  if (fase === "pasarela" || fase === "procesando") {
+  if (fase === "pasarela" || fase === "procesando" || fase === "error") {
     return (
       <div className="overflow-hidden rounded-xl border border-neutro-200">
         <div className={`px-4 py-3 text-white ${metodo === "nequi" ? "bg-[#200020]" : "bg-[#0b3b8c]"}`}>
@@ -237,7 +228,21 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
             Pagar <strong className="text-neutro-900">${montoPesos.toLocaleString("es-CO")}</strong> a Rastro Solidario
             {metodo === "nequi" ? ` desde el celular ${celular}` : ""}.
           </p>
-          {fase === "pasarela" ? (
+          {fase === "error" ? (
+            <>
+              <p className="rounded-lg bg-peligro-50 p-3 text-sm text-peligro-800">
+                <strong>No se pudo completar la donación.</strong> {error}
+              </p>
+              <div className="flex gap-2">
+                <button className="btn-primario flex-1" onClick={pagar}>
+                  Intentar de nuevo
+                </button>
+                <button className="btn-secundario" onClick={() => setFase("formulario")}>
+                  Volver
+                </button>
+              </div>
+            </>
+          ) : fase === "pasarela" ? (
             <>
               <p className="rounded-lg bg-neutro-50 p-3 text-xs text-neutro-500">
                 {metodo === "nequi" ? "En la vida real te llegaría una notificación a la app de Nequi para aceptar el pago." : "En la vida real te llevaría al portal de tu banco."} En esta
@@ -324,7 +329,7 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
 
 // ─────────────────────────── Con wallet (MetaMask) ───────────────────────────
 
-function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address; wei: bigint; restante: bigint; pesosNum: number }) {
+export function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address; wei: bigint; restante: bigint; pesosNum: number }) {
   const { address, chainId } = useAccount();
   const saldo = useSaldoCop();
   const cliente = usePublicClient({ chainId: CHAIN_ID });
@@ -420,8 +425,9 @@ function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address
 }
 
 function DonacionesRecientes({ campana }: { campana: Address }) {
-  const { recientes, matchings } = useCampana(campana);
-  const nombre = useNombres(matchings.map((m) => m.empresa));
+  const { recientes } = useCampana(campana);
+  const { esEmpresa } = useEmpresasAliadas(campana);
+  const nombre = useNombres(recientes.filter((d) => esEmpresa(d.donante)).map((d) => d.donante));
   return (
     <Seccion titulo="Últimas donaciones" descripcion="Leídas directamente del contrato.">
       {recientes.length === 0 ? (
@@ -429,24 +435,26 @@ function DonacionesRecientes({ campana }: { campana: Address }) {
       ) : (
         <ul className="divide-y divide-neutro-100">
           {recientes.map((d, i) => {
-            const empresa = matchings.some((m) => mismaDireccion(m.empresa, d.donante));
+            const empresa = esEmpresa(d.donante);
             return (
               <li key={`${d.donante}-${d.bloque}-${i}`} className="flex items-center gap-3 py-2.5 text-sm">
                 <span
                   aria-hidden
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${empresa ? "bg-alerta-100 ring-1 ring-inset ring-alerta-200" : "bg-marca-50 text-marca-700 ring-1 ring-inset ring-marca-100"}`}
                 >
-                  {empresa ? "🎁" : "♥"}
+                  {empresa ? "🏢" : "♥"}
                 </span>
                 <span className="min-w-0 flex-1">
                   {empresa ? (
-                    <span className="block truncate text-xs font-semibold text-alerta-800">{nombre(d.donante) ?? "Empresa aliada"}</span>
+                    <a className="block truncate text-xs font-semibold text-alerta-800 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
+                      {nombre(d.donante) ?? "Empresa aliada"}
+                    </a>
                   ) : (
                     <a className="block truncate font-mono text-xs text-neutro-600 hover:text-marca-700 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
                       {corta(d.donante)}
                     </a>
                   )}
-                  <span className="block text-[11px] text-neutro-400">{empresa ? "Matching · " : ""}{fecha(d.fecha)}</span>
+                  <span className="block text-[11px] text-neutro-400">{empresa ? "Empresa aliada · " : ""}{fecha(d.fecha)}</span>
                 </span>
                 <strong className="font-display text-neutro-900">${pesos(d.monto)}</strong>
               </li>
@@ -495,7 +503,7 @@ function PorQueMonad() {
           <strong className="text-neutro-800">Rendimiento.</strong> En las primeras horas llegan miles de donaciones a la vez; bloques de ~400 ms y ejecución en paralelo.
         </li>
         <li>
-          <strong className="text-neutro-800">Contratos de hasta 128 KB.</strong> Toda la lógica anticorrupción (censo, sobrecosto, matching, reputación) vive en la cadena, no en un
+          <strong className="text-neutro-800">Contratos de hasta 128 KB.</strong> Toda la lógica anticorrupción (censo, sobrecosto, reembolsos, reputación) vive en la cadena, no en un
           servidor.
         </li>
       </ul>

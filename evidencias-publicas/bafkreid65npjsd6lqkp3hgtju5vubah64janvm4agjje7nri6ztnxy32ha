@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 454" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="454" fill="#fafaf9"/>
+  <rect x="0" y="0" width="760" height="110" fill="#0f766e"/>
+  <text x="40" y="52" font-size="28" font-weight="bold" fill="#fff">Ferretería El Constructor</text>
+  <text x="40" y="84" font-size="16" fill="#ccfbf1">NIT 901.765.432-7 · Factura electrónica de venta (simulada)</text>
+  <text x="720" y="52" font-size="22" font-weight="bold" fill="#fff" text-anchor="end">FE-104197</text>
+  <text x="720" y="84" font-size="16" fill="#ccfbf1" text-anchor="end">17/10/2026, 2:01 p. m.</text>
+  <text x="40" y="160" font-size="15" fill="#57534e">Cliente: Campaña de emergencia (pago directo desde contrato inteligente)</text>
+  <line x1="40" y1="200" x2="720" y2="200" stroke="#d6d3d1" stroke-width="2"/>
+  <text x="40" y="222" font-size="14" font-weight="bold" fill="#57534e">DESCRIPCIÓN</text>
+  <text x="430" y="222" font-size="14" font-weight="bold" fill="#57534e" text-anchor="end">CANT.</text>
+  <text x="560" y="222" font-size="14" font-weight="bold" fill="#57534e" text-anchor="end">UNITARIO</text>
+  <text x="720" y="222" font-size="14" font-weight="bold" fill="#57534e" text-anchor="end">TOTAL</text>
+  
+    <text x="40" y="250" font-size="17" fill="#1c1917">Kit de techo (6 tejas de zinc, amarres, puntillas)</text>
+    <text x="430" y="250" font-size="17" fill="#1c1917" text-anchor="end">8</text>
+    <text x="560" y="250" font-size="17" fill="#1c1917" text-anchor="end">$500.000</text>
+    <text x="720" y="250" font-size="17" fill="#1c1917" text-anchor="end">$4.000.000</text>
+  <line x1="40" y1="294" x2="720" y2="294" stroke="#d6d3d1" stroke-width="2"/>
+  <text x="560" y="330" font-size="20" font-weight="bold" fill="#1c1917" text-anchor="end">TOTAL</text>
+  <text x="720" y="330" font-size="22" font-weight="bold" fill="#0f766e" text-anchor="end">$4.000.000</text>
+  <text x="40" y="384" font-size="14" fill="#78716c">Documento de prueba generado por la simulación de Rastro Solidario. Sin validez fiscal.</text>
+</svg>

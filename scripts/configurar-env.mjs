@@ -9,7 +9,7 @@ const red = redPorNombre(chainId);
 const r = leerReporte(chainId);
 const esMonad = red.id === 10143;
 
-parcharEnv(path.join(RAIZ, "frontend", ".env"), {
+const valores = {
   VITE_CHAIN_ID: String(red.id),
   VITE_RPC_URL: red.rpcUrls.default.http[0],
   VITE_EXPLORER_URL: esMonad ? red.blockExplorers.default.url : "",
@@ -20,14 +20,19 @@ parcharEnv(path.join(RAIZ, "frontend", ".env"), {
   VITE_REPUTACION_ADDRESS: r.HistorialReputacion,
   VITE_REENVIADOR_ADDRESS: r.ReenviadorGas,
   VITE_BLOQUE_DESPLIEGUE: String(r.bloqueDespliegue ?? 0),
-  // Con Pinata, el navegador lee las evidencias directo de IPFS (ver pnpm pinata)
-  VITE_IPFS_GATEWAY: process.env.PINATA_JWT ? process.env.IPFS_GATEWAY || "" : "",
-});
+  // Con Pinata, el navegador lee las evidencias directo de IPFS (ver pnpm pinata). La URL del
+  // gateway es pública: puede ir en .env.production.
+  ...(process.env.PINATA_JWT && process.env.IPFS_GATEWAY ? { VITE_IPFS_GATEWAY: process.env.IPFS_GATEWAY } : {}),
+};
+parcharEnv(path.join(RAIZ, "frontend", ".env"), valores);
+// El build de producción (Vercel) usa frontend/.env.production, que sí va en git: solo tiene
+// direcciones públicas de Monad, nada secreto.
+if (esMonad) parcharEnv(path.join(RAIZ, "frontend", ".env.production"), valores);
 
 exportarAbis();
 
 console.log(`
-✓ frontend/.env actualizado para ${red.name} (chainId ${red.id})
+✓ frontend/.env${esMonad ? " y frontend/.env.production" : ""} actualizados para ${red.name} (chainId ${red.id})
    MockCOP         ${r.MockCOP}
    RegistroActores ${r.RegistroActores}
    CampanaFactory  ${r.CampanaFactory}

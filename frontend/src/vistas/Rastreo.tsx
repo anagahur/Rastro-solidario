@@ -9,8 +9,8 @@ import { VerEvidencia } from "../componentes/Evidencia";
 import { RecuperarBilletera, RespaldoPalabras } from "../componentes/Recuperacion";
 import { seguirCuenta, useCuentasSeguidas } from "../lib/avisos";
 import { cuentaInvisible, enviarSinGas, useBilleteraInvisible } from "../lib/billeteraInvisible";
-import { useCampana, useNombres } from "../lib/datos";
-import { esDireccion, etiquetaEtapa, fecha, mismaDireccion, pesos, porcentaje } from "../lib/formato";
+import { useCampana, useEmpresasAliadas, useNombres } from "../lib/datos";
+import { corta, esDireccion, etiquetaEtapa, fecha, mismaDireccion, pesos, porcentaje } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
 import { navegar } from "../lib/ruta";
 import { useEscribir } from "../lib/useEscribir";
@@ -113,8 +113,8 @@ function RastroDonante({ campana, donante }: { campana: Address; donante: Addres
     args: [donante],
     query: { refetchInterval: REFRESCO_MS },
   }).data;
-  const { matchings } = useCampana(campana);
-  const nombre = useNombres([...(etapas ?? []).map((e) => e.proveedor), ...matchings.map((m) => m.empresa)]);
+  const { esEmpresa: esCuentaDeEmpresa } = useEmpresasAliadas(campana);
+  const nombre = useNombres([...(etapas ?? []).map((e) => e.proveedor), donante]);
   const { ejecutar, pendiente } = useEscribir();
   const { address } = useAccount();
   const { direccion: invisible } = useBilleteraInvisible();
@@ -129,7 +129,7 @@ function RastroDonante({ campana, donante }: { campana: Address; donante: Addres
   const partes = etapas.map((e, i) => ({ etapa: e, parte: resumen.partePorEtapa[i], i }));
   const soyYo = address?.toLowerCase() === donante.toLowerCase();
   const esInvisible = mismaDireccion(invisible, donante);
-  const esEmpresa = matchings.some((m) => mismaDireccion(m.empresa, donante));
+  const esEmpresa = esCuentaDeEmpresa(donante);
 
   async function reclamarSinGas() {
     const cuenta = cuentaInvisible();
@@ -178,13 +178,11 @@ function RastroDonante({ campana, donante }: { campana: Address; donante: Addres
           <p className="mt-2 text-sm text-neutro-500">
             Tu aporte es el {porcentaje(resumen.aporte, resumen.totalRecaudado).toFixed(2)} % del total, así que de cada pago esa misma proporción “es tuya”.
           </p>
-          {resumen.matchingGenerado > 0n && (
-            <p className="nota-matching mt-3">
-              🎁 Gracias a tu donación, {matchings.length === 1 ? (nombre(matchings[0].empresa) ?? "la empresa aliada") : "las empresas aliadas"} sumaron{" "}
-              <strong>{pesos(resumen.matchingGenerado)} MockCOP</strong> más para la emergencia.
+          {esEmpresa && (
+            <p className="nota mt-3 bg-alerta-50/60 text-neutro-700 ring-alerta-200/70">
+              🏢 Esta cuenta es la empresa aliada <strong className="text-neutro-900">{nombre(donante) ?? corta(donante)}</strong>: este es el rastreo de su aporte, igual que el de cualquier donante.
             </p>
           )}
-          {esEmpresa && <p className="mt-3 rounded-xl bg-alerta-50 p-3 text-sm text-alerta-900">Esta cuenta es una empresa aliada: su aporte es el matching que sumó a las donaciones.</p>}
 
           {/* Barra apilada: cómo se reparte tu aporte */}
           <div className="mt-6 flex h-6 w-full gap-0.5 overflow-hidden rounded-full bg-neutro-100 p-0.5 ring-1 ring-inset ring-neutro-200" aria-hidden>

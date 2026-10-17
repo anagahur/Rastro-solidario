@@ -21,7 +21,7 @@ Guion de la presentación: [docs/PITCH.md](docs/PITCH.md).
 | **Reputación on-chain** | Historial público de cada fundación, proveedor, verificador y empresa entre campañas: etapas pagadas, rechazadas, vencidas, sobrecostos, monto. Lo escriben **solo** los contratos de las campañas oficiales. Índice de confianza = pagadas ÷ (pagadas + rechazadas + vencidas + sobrecostos). | `HistorialReputacion` |
 | **Avisos al donante** | «Hoy se usaron $60.000 de tu donación en mercados para «Inundación…»». Campanita en la app, notificación del navegador y bot de Telegram opcional. | `lib/avisos.ts`, `scripts/notificador.mjs` |
 | **Página pública** | Sin wallet: línea de tiempo, mapa de entregas (OpenStreetMap), galería de evidencias, QR para compartir, WhatsApp/X y **datos abiertos** (CSV/JSON) para periodistas y veedurías. | `#/campana/<dirección>` |
-| **Matching de empresas** | Una empresa aliada bloquea fondos en el contrato y duplica (o +50 %, o triplica) cada donación hasta un tope. Lo no usado le vuelve al cerrar el recaudo; lo usado cuenta como su aporte (si hay reembolso, recupera su parte). No puede ser proveedora de la misma campaña. | `comprometerMatching` |
+| **Empresas aliadas** | Una empresa registrada dona como cualquier persona: el aporte queda a su nombre, recibe su recibo NFT, rastrea en qué se gastó cada peso y aparece destacada en la campaña, en la página pública y en Reputación. Si hay reembolso, recupera su parte. | `donar` / `donarConPermit` |
 
 ## Actores (todos simulados con wallets de prueba)
 
@@ -32,7 +32,7 @@ Guion de la presentación: [docs/PITCH.md](docs/PITCH.md).
 | Proveedor | Está registrado y recibe el pago directo al entregar |
 | Verificador | Confirma con foto, fecha y GPS que la entrega ocurrió (2 de 3; 3 de 3 si hay sobrecosto). Uno de ellos carga el censo |
 | Familia damnificada | Confirma con el QR de su tarjeta que recibió la ayuda (sin wallet, sin gas) |
-| Empresa aliada | Compromete matching: multiplica las donaciones hasta un tope |
+| Empresa aliada | Dona con su nombre y sigue en qué se gasta su aporte |
 | Patrocinador de gas | Paga las transacciones de quien no tiene cripto (solo hacia campañas oficiales y acciones permitidas) |
 | Administrador | Habilita fundaciones, verificadores, proveedores y empresas en el registro |
 
@@ -40,7 +40,7 @@ Guion de la presentación: [docs/PITCH.md](docs/PITCH.md).
 
 | Contrato | Rol |
 |---|---|
-| `CampanaEmergencia.sol` | El núcleo: meta, etapas, verificadores, censo y quórum de la comunidad, sobrecosto, matching, pagos automáticos, reembolsos y "a dónde fue cada peso". ERC-2771: todas las acciones aceptan gas patrocinado |
+| `CampanaEmergencia.sol` | El núcleo: meta, etapas, verificadores, censo y quórum de la comunidad, sobrecosto, pagos automáticos, reembolsos y "a dónde fue cada peso". ERC-2771: todas las acciones aceptan gas patrocinado |
 | `CampanaFactory.sol` | Crea una campaña por emergencia (solo fundaciones registradas). Es la lista oficial de campañas |
 | `HistorialReputacion.sol` | Reputación acumulada entre campañas, con índice de confianza consultable por otros contratos |
 | `ReenviadorGas.sol` | `ERC2771Forwarder` de OpenZeppelin: verifica firma EIP-712, nonce y plazo de cada solicitud patrocinada |
@@ -71,8 +71,11 @@ también quedan en la cadena (`votos(etapa)`).
 
 - **Donar**: `donarConPermit` (firma gratis + **1 sola transacción**, también vía `ReenviadorGas`) o `approve` +
   `donar`. Si alguien dona más de lo que falta, solo se cobra lo que falta, y la meta cerrada cierra el recaudo.
-- **Matching**: hasta 3 empresas por campaña, proporción de 0,01 % a 300 %, tope ≤ lo que falta. Se aplica en el
-  orden en que se comprometieron, sin pasar la meta. Lo no usado vuelve al cerrar (o al cancelar).
+- **Empresas aliadas**: donan con `donar`/`donarConPermit` como cualquiera. El Panel no deja proponer como
+  proveedor a quien donó a la campaña (conflicto de interés). Nota: el contrato desplegado conserva
+  `comprometerMatching` (una versión anterior en la que la empresa multiplicaba cada donación); la app ya no
+  lo usa, y su bloqueo on-chain de conflicto de interés solo cubre a las empresas con matching. En un
+  próximo despliegue conviene quitarlo y bloquear en el contrato a cualquier donante como proveedor.
 - **Censo**: solo un verificador de la campaña lo carga (la fundación no puede inventarse beneficiarios). Una
   familia no puede ser fundación, verificador, empresa aliada ni proveedor registrado.
 - **Proponer**: solo la fundación, solo la etapa actual, solo a un proveedor registrado, con evidencia. La
@@ -95,7 +98,7 @@ también quedan en la cadena (`votos(etapa)`).
 
 Las donaciones se cierran antes del primer pago, así que la participación de cada donante queda fija.
 Si donaste el 2 % del total, el 2 % de cada pago "es tuyo". `resumenDonante(dirección)` lo calcula en una
-sola llamada (incluido cuánto sumaron las empresas gracias a ti) y el frontend lo muestra así:
+sola llamada y el frontend lo muestra así:
 
 > **De tus 200.000 MockCOP:** 60.000 en mercados (Supermercado La Cosecha), 80.000 en materiales
 > (Ferretería El Constructor), 60.000 pendientes. 🎁 Gracias a tu donación, Aliados por Antioquia sumó 200.000 más.
@@ -146,7 +149,7 @@ pnpm anvil
 
 # Terminal 2
 pnpm deploy:local       # despliega, registra actores y escribe frontend/.env
-pnpm simular:local      # 3 campañas: completa (censo, matching, sobrecosto), falla y una ABIERTA para la demo
+pnpm simular:local      # 3 campañas: completa (censo, empresa aliada, sobrecosto), falla y una ABIERTA para la demo
 pnpm dev                # http://localhost:5173  (incluye evidencias, pasarela y gas patrocinado)
 
 # Opcional, Terminal 3
@@ -154,7 +157,7 @@ pnpm notificador        # avisos a donantes (consola, o Telegram con TELEGRAM_BO
 ```
 
 La simulación deja la campaña **«Avenida torrencial en Mocoa»** recaudando, con censo de 20 familias y
-matching activo: es la que se usa en la demo en vivo. Sus tarjetas QR están en Panel → Censo → 🖨 Tarjetas
+el aporte de una empresa aliada: es la que se usa en la demo en vivo. Sus tarjetas QR están en Panel → Censo → 🖨 Tarjetas
 (entrando con la cuenta de la Junta de Acción Comunal).
 
 **Celular en la demo:** `pnpm dev` muestra una dirección «Network» (p. ej. `http://192.168.1.20:5173`).
@@ -195,13 +198,53 @@ Las llaves privadas las muestra `pnpm wallets -- --red local --llaves`.
 Opciones de la simulación: `--escenario completo|falla|abierta|vencimiento|todos` · `--donantes N` ·
 `--familias N` · `--concurrencia N` · `--semilla N`.
 
+Mantenimiento en vivo: `pnpm recargar:monad` sube el saldo de la pasarela, el patrocinador de gas y
+los actores (cada donación con Nequi/PSE cuesta ≈ 0,07 MON porque Monad cobra el gas límite).
+
+**RPC de respaldo.** El servidor y el navegador usan Ankr y dRPC si el RPC oficial se cae o se pone
+lento (`MONAD_RPC_RESPALDO` / `VITE_RPC_RESPALDO`). El servidor mide cada 15 s qué nodo responde mejor.
+
+## Publicar en Vercel
+
+La app es estática salvo los servicios de la demo (`/api/*`, `/ipfs/*`), que en Vercel corren en la
+función [`api/servicios.mjs`](api/servicios.mjs) (el mismo código de `pnpm dev`). [`vercel.json`](vercel.json)
+ya trae el build, la función y las reescrituras; las direcciones públicas de los contratos van en
+`frontend/.env.production` (lo actualiza `pnpm deploy:monad`).
+
+Una sola vez, en este computador:
+
+1. `pnpm pasarela:monad`: pasa la propiedad de MockCOP a una cuenta propia de la pasarela
+   (`SIM_MNEMONIC` índice 10) y le deja 1 MON. Así el servidor público no guarda la llave del deployer,
+   que administra el registro de actores.
+2. `pnpm evidencias:publicar`: copia a `evidencias-publicas/` las facturas, fotos y actas de las
+   campañas en Monad (Vercel no tiene la carpeta local `evidencias/`). Haz commit de esa carpeta.
+3. `pnpm vercel:env`: escribe `.env.vercel` (ignorado por git) con las variables para Vercel.
+   Solo contiene las llaves de la pasarela y del patrocinador de gas.
+
+En [vercel.com](https://vercel.com/new): importa el repositorio, deja la raíz del proyecto en la
+carpeta del repo (Vercel toma `vercel.json`) y en *Environment Variables* pega el contenido de
+`.env.vercel`. Después del primer despliegue:
+
+4. `pnpm url:monad -- https://<tu-app>.vercel.app/` para que los NFT de recibo enlacen a la app publicada.
+5. `cd pruebas-e2e && BASE_URL=https://<tu-app>.vercel.app node monad.mjs` (dona 2 veces de verdad).
+
+| Variable en Vercel | Para qué |
+|---|---|
+| `CHAIN_ID` | `10143` |
+| `PASARELA_PRIVATE_KEY` | Dueña de MockCOP: acuña los pesos de Nequi / PSE |
+| `PATROCINADOR_PRIVATE_KEY` | Paga el gas de quien dona sin cripto, de las familias y de los reembolsos |
+| `PINATA_JWT` | Opcional. Sin ella todo funciona menos **subir evidencias nuevas** desde el Panel de actores (el disco de Vercel no persiste) |
+| `MONAD_RPC_URL`, `MONAD_RPC_RESPALDO` | Opcionales (RPC principal y de respaldo) |
+| `LIMITE_PAGOS_IP`, `LIMITE_REENVIOS_IP`, `LIMITE_EVIDENCIAS_IP` | Tope por IP cada 10 min. `pnpm vercel:env` los deja en 60, 150 y 60 para que una sala con la misma red wifi pueda donar (sin ellos: 10, 30 y 30) |
+
 ## Pruebas
 
 | Qué | Cómo | Resultado |
 |---|---|---|
-| Contratos | `pnpm test:contracts` | **107 tests**: camino feliz con 50 donantes, conteo en campo (menos unidades = rechazo), comunidad (quórum, orden, plazo), gas patrocinado (familia y donante sin gas, firma alterada), sobrecosto (3 de 3, un rechazo basta), matching (tope, meta, varias empresas, devolución, cancelación, conflicto de interés), reputación entre campañas, 20+ accesos no autorizados, NFT, fuzz e **invariantes** (el saldo siempre cuadra, incluido el matching bloqueado; nunca sale más de lo que entró; la fundación nunca cobra) |
+| Contratos | `pnpm test:contracts` | **107 tests**: camino feliz con 50 donantes, conteo en campo (menos unidades = rechazo), comunidad (quórum, orden, plazo), gas patrocinado (familia y donante sin gas, firma alterada), sobrecosto (3 de 3, un rechazo basta), matching heredado del contrato (tope, meta, devolución, conflicto de interés), reputación entre campañas, 20+ accesos no autorizados, NFT, fuzz e **invariantes** (el saldo siempre cuadra, incluido el matching bloqueado; nunca sale más de lo que entró; la fundación nunca cobra) |
 | Simulación | `pnpm simular:local` | 3 escenarios con wallets simuladas, evidencias con imágenes y reputación final |
-| Frontend | `cd pruebas-e2e && npm run instalar && npm run prueba` | Chromium real: censo y tarjetas QR, matching, donación con Nequi sin wallet, donación con MetaMask, sobrecosto, evidencia con foto y GPS, 3 de 3 verificadores, familia confirma desde el celular, página pública (línea de tiempo, mapa, integridad), reputación, avisos, rechazo, reembolso sin gas y vista móvil |
+| Monad testnet | `cd pruebas-e2e && node monad.mjs` (o `BASE_URL=… node monad.mjs`) | Contra la app real en Monad (local o Vercel): API, 5 pestañas sin errores, evidencia publicada, donación con Nequi y con PSE y su rastreo |
+| Frontend | `cd pruebas-e2e && npm run instalar && npm run prueba` | Chromium real: censo y tarjetas QR, aporte de empresa aliada, donación con Nequi sin wallet, donación con MetaMask, sobrecosto, evidencia con foto y GPS, 3 de 3 verificadores, familia confirma desde el celular, página pública (línea de tiempo, mapa, integridad), reputación, avisos, rechazo, reembolso sin gas y vista móvil |
 
 ## Límites que conviene reconocer en la sustentación
 

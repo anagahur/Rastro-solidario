@@ -41,13 +41,11 @@ export function useCampana(direccion?: Address) {
     contracts: [
       { ...base, functionName: "info" },
       { ...base, functionName: "etapas" },
-      { ...base, functionName: "matchings" },
     ],
     query: { ...q, enabled: habilitado },
   });
   const info = lecturas.data?.[0]?.result;
   const etapas = lecturas.data?.[1]?.result;
-  const matchings = lecturas.data?.[2]?.result;
   const etapaActual = info?.etapaActual;
 
   const votos = useReadContract({
@@ -69,7 +67,6 @@ export function useCampana(direccion?: Address) {
   return {
     info,
     etapas,
-    matchings: matchings ?? [],
     votos: votos.data,
     recientes: [...(recientes.data ?? [])].reverse(),
     cargando: lecturas.isLoading,
@@ -146,6 +143,60 @@ export function useActores() {
   };
 }
 
+export interface EmpresaAliada {
+  cuenta: Address;
+  nombre: string;
+  aporte: bigint;
+}
+
+/**
+ * Empresas aliadas (registradas en el registro de actores) que donaron a la campaña, de mayor a
+ * menor aporte. Una empresa dona como cualquier persona: queda a su nombre, con su recibo NFT.
+ */
+export function useEmpresasAliadas(direccion?: Address) {
+  const { empresas } = useActores();
+  const r = useReadContracts({
+    contracts: empresas.map((e) => ({ address: direccion, abi: campanaEmergenciaAbi, functionName: "aportes", args: [e.cuenta] }) as const),
+    query: { ...q, enabled: !!direccion && empresas.length > 0 },
+  });
+  const aliadas: EmpresaAliada[] = empresas
+    .map((e, i) => ({ ...e, aporte: (r.data?.[i]?.result as bigint | undefined) ?? 0n }))
+    .filter((e) => e.aporte > 0n)
+    .sort((a, b) => (b.aporte > a.aporte ? 1 : b.aporte < a.aporte ? -1 : 0));
+  const esEmpresa = (cuenta?: string) => !!cuenta && empresas.some((e) => e.cuenta.toLowerCase() === cuenta.toLowerCase());
+  return { aliadas, esEmpresa };
+}
+
+/** Lo que aportó cada cuenta sumando todas las campañas oficiales (para las empresas aliadas). */
+export function useAportesEnCampanas(cuentas: readonly Address[]) {
+  const lista = useReadContract({
+    address: DIRECCIONES.factory,
+    abi: campanaFactoryAbi,
+    functionName: "campanas",
+    query: { ...q, enabled: CONFIGURADO && cuentas.length > 0 },
+  });
+  const campanas = (lista.data ?? []) as readonly Address[];
+  const r = useReadContracts({
+    contracts: campanas.flatMap((c) => cuentas.map((a) => ({ address: c, abi: campanaEmergenciaAbi, functionName: "aportes", args: [a] }) as const)),
+    query: { ...q, enabled: campanas.length > 0 && cuentas.length > 0 },
+  });
+  return (cuenta: Address) => {
+    const j = cuentas.findIndex((c) => c.toLowerCase() === cuenta.toLowerCase());
+    let total = 0n;
+    let apoyadas = 0;
+    if (j >= 0) {
+      campanas.forEach((_, i) => {
+        const v = r.data?.[i * cuentas.length + j]?.result as bigint | undefined;
+        if (v) {
+          total += v;
+          apoyadas++;
+        }
+      });
+    }
+    return { total, campanas: apoyadas };
+  };
+}
+
 export interface Reputacion {
   campanas: number;
   finalizadas: number;
@@ -185,7 +236,7 @@ export function useReputacion(direcciones: readonly (Address | undefined)[]) {
   }, [r.data, unicas.join()]);
 }
 
-/** Todas las donaciones de una campaña (paginadas de a 300), incluidas las de matching. */
+/** Todas las donaciones de una campaña (paginadas de a 300), incluidas las de empresas aliadas. */
 export function useTodasLasDonaciones(direccion?: Address, total?: bigint) {
   const cliente = usePublicClient();
   return useQuery({

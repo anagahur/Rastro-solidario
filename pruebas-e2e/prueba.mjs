@@ -1,7 +1,7 @@
 // Prueba E2E del frontend real contra Anvil, con un "MetaMask" falso que reenvía al nodo
 // (Anvil tiene las cuentas de prueba desbloqueadas: firma eth_sendTransaction y signTypedData).
 //
-// Recorre TODO el producto: censo y tarjetas QR, matching de empresa, donación con Nequi sin
+// Recorre TODO el producto: censo y tarjetas QR, aporte de una empresa aliada, donación con Nequi sin
 // wallet (billetera invisible + gas patrocinado), donación con MetaMask, alerta de sobrecosto,
 // evidencia con foto y GPS, 3 de 3 verificadores, confirmación de una familia desde el celular,
 // página pública (línea de tiempo, mapa, integridad), reputación, avisos al donante, rechazo y
@@ -151,34 +151,32 @@ try {
   await v2.page.screenshot({ path: `${SHOTS}/01-tarjetas-qr.png`, fullPage: true });
   ok("3 familias en el censo y 3 tarjetas con QR");
 
-  // 3. Empresa aliada duplica donaciones hasta 200.000
-  paso("Empresa aliada compromete matching (duplica hasta 200.000)");
+  // 3. Empresa aliada dona con su nombre desde el Panel
+  paso("Empresa aliada dona 200.000 con su nombre");
   const e = await abrir(C.empresa, "panel");
-  await e.page.getByText("Matching de tu empresa").waitFor({ timeout: 20000 });
+  await e.page.getByText("Aporte de tu empresa").waitFor({ timeout: 20000 });
   await e.page.getByRole("button", { name: /faucet/ }).click();
   await toast(e.page, "Recibiste 500.000");
-  await e.page.getByLabel(/^Tope/).fill("200000");
-  await e.page.getByRole("button", { name: /Bloquear 200\.000/ }).click();
-  await toast(e.page, "Matching activo");
-  ok("200.000 bloqueados en el contrato");
+  await e.page.getByLabel(/^Monto a donar/).fill("200000");
+  await e.page.getByRole("button", { name: /^Donar 200\.000 MockCOP/ }).click();
+  await toast(e.page, "Gracias");
+  await e.page.getByText("Tu empresa aportó 200.000", { exact: false }).waitFor({ timeout: 20000 });
+  ok("200.000 a nombre de la empresa, con su recibo NFT");
   await e.ctx.close();
 
   // 4. Donante SIN wallet: Nequi simulado → billetera invisible → gas patrocinado
   paso("Donante sin cripto dona 300.000 con Nequi");
   const n = await abrirSinWallet("nequi", "donar");
-  await n.page.getByText("duplica cada donación", { exact: false }).first().waitFor({ timeout: 20000 });
+  await n.page.getByText("Empresas aliadas", { exact: true }).first().waitFor({ timeout: 20000 });
   await n.page.getByLabel(/¿Cuánto quieres donar/).fill("300000");
-  await n.page.getByText("se convierten en 500.000", { exact: false }).waitFor();
   await n.page.getByLabel("Celular Nequi").fill("3001234567");
   await n.page.getByRole("button", { name: /^Donar \$300\.000/ }).click();
   await n.page.getByRole("button", { name: "Aprobar pago" }).click();
   await n.page.getByText("¡Gracias! Donaste 300.000 pesos").waitFor({ timeout: 30000 });
-  await n.page.getByText("La empresa aliada sumó 200.000", { exact: false }).waitFor();
   await n.page.screenshot({ path: `${SHOTS}/02-donar-nequi.png`, fullPage: true });
   await n.page.getByRole("button", { name: "Ver a dónde va mi dinero →" }).click();
   await n.page.getByText("De tus 300.000 MockCOP").waitFor({ timeout: 20000 });
-  await n.page.getByText("Gracias a tu donación", { exact: false }).waitFor();
-  ok("donación sin wallet + matching de 200.000, sin pagar gas");
+  ok("donación sin wallet y sin pagar gas; la empresa aliada aparece con su aporte");
 
   // 5. Donante con MetaMask completa la meta (permit, 1 tx)
   paso("Donante con MetaMask completa la meta");
