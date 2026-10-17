@@ -1,4 +1,4 @@
-import { defineChain, type Address } from "viem";
+import { defineChain, fallback, http, type Address, type Transport } from "viem";
 import { monadTestnet } from "viem/chains";
 
 const env = import.meta.env;
@@ -22,6 +22,26 @@ export const RPC_URL: string = (() => {
   } catch {}
   return RPC_CONFIGURADO;
 })();
+/**
+ * RPCs de respaldo en Monad (el público oficial se pone lento o limita a 15 peticiones/s en
+ * momentos de carga). VITE_RPC_RESPALDO acepta una lista separada por comas; vacío lo desactiva.
+ */
+const RPCS_RESPALDO: string[] =
+  CHAIN_ID === 10143
+    ? (env.VITE_RPC_RESPALDO ?? "https://rpc.ankr.com/monad_testnet,https://monad-testnet.drpc.org")
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter((u: string) => u && u !== RPC_URL)
+    : [];
+
+/** Transporte de la app: el RPC configurado y, si falla, los de respaldo en orden. */
+export function transporteApp(): Transport {
+  if (!RPCS_RESPALDO.length) return http(RPC_URL, { timeout: 15_000, retryCount: 2, retryDelay: 300 });
+  // Sin reintentos por nodo: ante un error se pasa enseguida al siguiente; se reintenta la cadena.
+  const uno = (url: string) => http(url, { timeout: 15_000, retryCount: 0 });
+  return fallback([RPC_URL, ...RPCS_RESPALDO].map(uno), { retryCount: 2, retryDelay: 300 });
+}
+
 export const EXPLORER_URL: string =
   env.VITE_EXPLORER_URL || (CHAIN_ID === 10143 ? "https://testnet.monadvision.com" : "");
 export const ES_MONAD = CHAIN_ID === 10143;

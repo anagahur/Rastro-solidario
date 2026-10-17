@@ -19,6 +19,7 @@
     "simular": "node scripts/simular.mjs",
     "simular:local": "node scripts/simular.mjs --red local",
     "simular:monad": "node scripts/simular.mjs --red monad",
+    "recargar:monad": "node scripts/recargar.mjs --red monad",
     "demo": "node scripts/simular.mjs --red local --escenario todos",
     "notificador": "node scripts/notificador.mjs --red local",
     "notificador:monad": "node scripts/notificador.mjs --red monad",

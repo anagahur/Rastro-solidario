@@ -1,0 +1,355 @@
+{
+  "red": "Monad Testnet",
+  "chainId": 10143,
+  "fecha": "2026-10-17T19:01:15.157Z",
+  "semilla": 2026,
+  "explorador": "https://testnet.monadvision.com",
+  "contratos": {
+    "chainId": 10143,
+    "bloqueDespliegue": 71886226,
+    "deployer": "0x4C1271bCc7c46C54F61171750be3B8eCcAC9A1A1",
+    "MockCOP": "0xB925478aFe3205BcD46e40886E1f242E8b2A353e",
+    "RegistroActores": "0x9C29C375a52f88A03638699b968A43CFbB39852C",
+    "ReciboDonacion": "0x1d38E40BdBB749173fB02619F5F3e372B0B096d9",
+    "CampanaFactory": "0x32c1c036c4c2AD8ca24DBc209844Aca94F6D6a0f",
+    "HistorialReputacion": "0x3A4Adc073e04a280442D860aBc34147b2bDb7aCb",
+    "ReenviadorGas": "0x0926FaC440957Fe011bD1D00FC5d013809624A6A",
+    "Dispersor": "0x9E77d03868c70d3A532BF36343235cfb5bd57Dbb",
+    "actores": {
+      "fundacion": "0x8290a4E80a6ee72484884A96758c68a4197c2F0f",
+      "verificadores": [
+        "0x2df65390605c9F7A45F57C08E9E930Df5A56301F",
+        "0xa4f63F52773a3e15a66f6CE517Ca2F3FC14A9E05",
+        "0xD97Af9E78Cae582c7db373A5aaA5a541Db0Bd15c"
+      ],
+      "proveedores": [
+        "0x4C111A40EAc847180344367DCC417caCD115F035",
+        "0xAF1122140c67f411E235AbEc5Aad3585F1704c00",
+        "0x860a310B4B5B88BD243a86d6210a1Bc7ee472f70"
+      ],
+      "empresa": "0x5bb3c4952f45627E324Cd0ce6e7c37C6308bc293",
+      "patrocinador": "0x5EA9B7668331Cb84f4A0Ab2E242C6BEeD6d24bf8"
+    }
+  },
+  "escenarios": {
+    "completo": {
+      "campana": "0x8C8ad7437C3abB362192986D4d2e49E20BC69817",
+      "txCreacion": "0x7ce09ac6d604c98e2fea1250895ccac4777574d323db0242c84f958de5b57104",
+      "txCenso": "0xc410cf4e42cafe735482af286f850d0842dd27945cabb4fec93bcfc70724e1b5",
+      "txMatching": "0xd50a24d0396fd0a12d28ebf50f8167650cdf5c1004f79ed794a2f64eb1e23ce0",
+      "meta": "10000000000000000000000000",
+      "donantes": 50,
+      "familias": 20,
+      "matchingUsado": "2000000000000000000000000",
+      "donaciones": {
+        "enviadas": 50,
+        "exitosas": 50,
+        "fallidas": 0,
+        "errores": [],
+        "paralelo": {
+          "cantidad": 49,
+          "ventanaMs": 12666,
+          "tps": 3.9,
+          "latenciaMs": {
+            "n": 49,
+            "min": 618,
+            "p50": 956,
+            "p95": 1300,
+            "max": 1407,
+            "promedio": 975
+          },
+          "bloquesUsados": 14,
+          "maxDonacionesEnUnBloque": 6,
+          "duracionTotalMs": 13161
+        },
+        "gasLimitPromedio": 526167,
+        "gasUsadoPromedio": 526167,
+        "costoPromedio": "0.05366913396",
+        "txEjemplo": "0x05f25df3e5a9f3c50d5809f3fc69a23c279167e27e2e83a55f2edb3801b4b74a"
+      },
+      "etapas": [
+        {
+          "etapa": 1,
+          "proveedor": "0x4C111A40EAc847180344367DCC417caCD115F035",
+          "nombreProveedor": "Supermercado La Cosecha",
+          "monto": "3000000000000000000000000",
+          "unidades": 20,
+          "sobrecosto": false,
+          "confirmacionesRequeridas": 2,
+          "familiasConfirmaron": 7,
+          "familiasRequeridas": 6,
+          "txPropuesta": "0x2d4a6f6282b401555b589a0d3c4ccdb5af8e3c95cbc1bed259bb211e47a1b7a4",
+          "uriFactura": "ipfs://bafkreieehwlvyogup2phbg2ri276yiw7jc5b6pgxvw3umf2paffpudisxy",
+          "txConfirmacion1": "0x2844d146c5f9281ae1b507e31f06d3cdd9e12913beea5f26580e2daed5b1076c",
+          "txFamilias": "0xab5da0a03fe85e814886f9be4c3cf24918d673dc3cb27d0570e8230b08b4f7ca",
+          "txPago": "0x8153e156f718d0426e570047042ef410266035ff28473e3ff69ead7daae7b889",
+          "latenciaPagoMs": 907
+        },
+        {
+          "etapa": 2,
+          "proveedor": "0xAF1122140c67f411E235AbEc5Aad3585F1704c00",
+          "nombreProveedor": "Ferretería El Constructor",
+          "monto": "4000000000000000000000000",
+          "unidades": 8,
+          "sobrecosto": true,
+          "confirmacionesRequeridas": 3,
+          "familiasConfirmaron": 7,
+          "familiasRequeridas": 6,
+          "txPropuesta": "0xfa6c19c62f5c9ba002dcc15448c2dd9bfd166ab3e3d7e8f3548f908829aaa650",
+          "uriFactura": "ipfs://bafkreic7pqyzvggw56fiyj77xu427osv56nspwu4wapbvbk64v4dvj5j6i",
+          "txConfirmacion1": "0x0a813b423e85c1c99a7457ee5cd79eb4d8926f8a2d96179c6c1a4b3629c09c62",
+          "txFamilias": "0x5c6af458353e4c77085d163a5626ef8d203aea608fb3b8865e777b50333b1a1d",
+          "txPago": "0x95861ed4908313dcf733b05e5aed659eec81f17137e1f6e6d3a1acb015a0bc0f",
+          "latenciaPagoMs": 830
+        },
+        {
+          "etapa": 3,
+          "proveedor": "0x860a310B4B5B88BD243a86d6210a1Bc7ee472f70",
+          "nombreProveedor": "Constructora Comunitaria",
+          "monto": "3000000000000000000000000",
+          "unidades": 4,
+          "sobrecosto": false,
+          "confirmacionesRequeridas": 2,
+          "familiasConfirmaron": 7,
+          "familiasRequeridas": 6,
+          "txPropuesta": "0xee23e8a09d6c86ed1862b9d6f9a225680367df6ff6504d853095f6a24e707093",
+          "uriFactura": "ipfs://bafkreifxq2j2i6vcbc3qn4qqxiy3yyinnetqa3crsfjpkuzdoq2wndlx4a",
+          "txConfirmacion1": "0xfbf3bb0b8860ab3b69108568ca30decaeaff44787ce7b02f74d435594a894408",
+          "txFamilias": "0xa63e5817d8b8c4ff16fa422978e440d0271fbde7211bfbccea954d66eaa0318c",
+          "txPago": "0xa47be383ef09cec0bc471deb28ca76debe826945fe40b408e7b52908fa0d5241",
+          "latenciaPagoMs": 750
+        }
+      ],
+      "ejemplos": [
+        {
+          "donante": "0x5289a4c036e30e74CD43a4C5a608B2ba82ac067A",
+          "texto": "De tus 134.000: 40.200 en mercados, 53.600 en materiales, 40.200 en reconstrucción; además la empresa aliada sumó 134.000 gracias a ti"
+        },
+        {
+          "donante": "0xc138Eb22460879Ac2A5528af06DB179d86B29c2b",
+          "texto": "De tus 101.000: 30.300 en mercados, 40.400 en materiales, 30.300 en reconstrucción; además la empresa aliada sumó 101.000 gracias a ti"
+        },
+        {
+          "donante": "0xbAD3eeDC12B9A58734BE8A5FaC8f4B54C14E46DD",
+          "texto": "De tus 180.000: 54.000 en mercados, 72.000 en materiales, 54.000 en reconstrucción; además la empresa aliada sumó 180.000 gracias a ti"
+        }
+      ],
+      "estadoFinal": 2
+    },
+    "falla": {
+      "campana": "0x0f6627D6740C1e2bD311b09fFf3c6ED2de7a1a57",
+      "txCreacion": "0x1ccde1e7aea25288e44318a95743c75703431e2a1cfb188b339bee17b4d987ae",
+      "meta": "2000000000000000000000000",
+      "donantes": 10,
+      "donaciones": {
+        "enviadas": 10,
+        "exitosas": 10,
+        "fallidas": 0,
+        "errores": [],
+        "paralelo": {
+          "cantidad": 9,
+          "ventanaMs": 2174,
+          "tps": 4.1,
+          "latenciaMs": {
+            "n": 9,
+            "min": 671,
+            "p50": 704,
+            "p95": 840,
+            "max": 840,
+            "promedio": 740
+          },
+          "bloquesUsados": 4,
+          "maxDonacionesEnUnBloque": 5,
+          "duracionTotalMs": 2716
+        },
+        "gasLimitPromedio": 519956,
+        "gasUsadoPromedio": 519956,
+        "costoPromedio": "0.0530356038",
+        "txEjemplo": "0x2e82fd570b5b4641544c1a13f1b178885a0f4c277b56e9a7e2ac589894bf68a4"
+      },
+      "etapas": [
+        {
+          "etapa": 1,
+          "proveedor": "0x4C111A40EAc847180344367DCC417caCD115F035",
+          "nombreProveedor": "Supermercado La Cosecha",
+          "monto": "600000000000000000000000",
+          "unidades": 4,
+          "sobrecosto": false,
+          "confirmacionesRequeridas": 2,
+          "familiasConfirmaron": 0,
+          "familiasRequeridas": 0,
+          "txPropuesta": "0x4b7551f0ceec03cfc83104d5ed04870205c1c472128afdf36477c4499c970979",
+          "uriFactura": "ipfs://bafkreihphhdaql62tg5f52z3xnggyqgbmrcfmv3gvskvtae42vvga3mcqm",
+          "txConfirmacion1": "0x3864d12d680e6ba5ff805b7923d5f6b154b8ec84e9a7ee86539973eae9c5baad",
+          "txPago": "0x0aa8ff66c8d21fd68a6e4d897c9115c646264d8af24737ee7429d3883e1c94d3",
+          "latenciaPagoMs": 1443
+        },
+        {
+          "etapa": 2,
+          "proveedor": "0xAF1122140c67f411E235AbEc5Aad3585F1704c00",
+          "txPropuesta": "0x8b43d163005605ed4b68aad73f042e51419e1cb93f3fea31e9a73a9fff749ea1",
+          "txRechazo1": "0xb4d1915037dd2975afae1f84a0ddd88ece61ec57e3d5dd6d1a243dfd46c057aa",
+          "txRechazo2": "0x3aa95506c20622e45e3d72d64634b60ead405b63109560f76ca57f581afb9bc9",
+          "estado": "Rechazada"
+        }
+      ],
+      "reembolsos": [
+        {
+          "donante": "0x823F7522C8889f183Ff4Fd7a144b87FE0ecf5886",
+          "monto": "63000000000000000000000",
+          "tx": "0x4b9594c1ece3da3ade57f3c24f60fd105ba1681656da970072518098cff4c6f5",
+          "ms": 942
+        },
+        {
+          "donante": "0x8f7D38b4c6b376A45E4b96325b1139321C2dEfAe",
+          "monto": "145600000000000000000000",
+          "tx": "0x3b2f2a25f8f6cd864e451798a3c3143db204fe69c7bc14c19aa57958d7e32b43",
+          "ms": 723
+        },
+        {
+          "donante": "0xCc8D28A218cb73a6eA80F2BDda1B980527A5250B",
+          "monto": "81900000000000000000000",
+          "tx": "0x526631f29870119102cd247190c852bf2f1043e6ead51bb3d5b2ff1901109aad",
+          "ms": 750
+        },
+        {
+          "donante": "0x943444d29E49F8fF2C73bA70e10C3C7008559A12",
+          "monto": "198800000000000000000000",
+          "tx": "0xddfc0b4c01bd45eaf58daec110cfee898235bdb4152b7f1b850c37f0dbc55857",
+          "ms": 739
+        },
+        {
+          "donante": "0xDf86f9bc44725059d103E32bd67A80d06cB2f46F",
+          "monto": "124600000000000000000000",
+          "tx": "0x9616ee17170c96097ab8655624419c2296a22d808d1d8f16ce16d1ece6a4081c",
+          "ms": 724
+        },
+        {
+          "donante": "0xfCcb6BFd3bd791d6Ed0c6F52f83fbd353Fc6213E",
+          "monto": "219100000000000000000000",
+          "tx": "0xe08cb0871910aa7e4e95949c775604f4bb7c4391abe763e27cf71d5094d0e000",
+          "ms": 980
+        },
+        {
+          "donante": "0x0ac294A4725A6FAd9bE22Cea35621AD731596F7e",
+          "monto": "178500000000000000000000",
+          "tx": "0x0b1185c6867c0df17edf9e59b9cd64e74e5f3ba30a599ce3b28b6276b58d1bf5",
+          "ms": 769
+        },
+        {
+          "donante": "0x26e2a57FD5d3931245a6Feb42Cc7AAa78435AaAB",
+          "monto": "124600000000000000000000",
+          "tx": "0x54b68aca1af58293525b5769b0f4707294863e214dcbcca5f7fb7bcc72148ad8",
+          "ms": 771
+        },
+        {
+          "donante": "0xC5F1e5E677FE9a6E4cBb41fa423f1097bCF9A773",
+          "monto": "118300000000000000000000",
+          "tx": "0x4770d575a8726cbeb05471f617518871a7cc18cb90b539725c6d692f220e0e2f",
+          "ms": 760
+        },
+        {
+          "donante": "0xcf8f78CdABD01CA228f7988CFD7478A94b31bDaD",
+          "monto": "145600000000000000000000",
+          "tx": "0xc6f468b71344b22b70c397a0bbff16475d86408fa6d8159b04435207c57ecdaa",
+          "ms": 765
+        }
+      ],
+      "totalReembolsado": "1400000000000000000000000",
+      "ejemplos": [
+        {
+          "donante": "0xCc8D28A218cb73a6eA80F2BDda1B980527A5250B",
+          "texto": "De tus 117.000: 35.100 en mercados, 46.800 en materiales (no pagado), 35.100 en reconstrucción (no pagado); reembolsados 81.900"
+        },
+        {
+          "donante": "0xDf86f9bc44725059d103E32bd67A80d06cB2f46F",
+          "texto": "De tus 178.000: 53.400 en mercados, 71.200 en materiales (no pagado), 53.400 en reconstrucción (no pagado); reembolsados 124.600"
+        },
+        {
+          "donante": "0x823F7522C8889f183Ff4Fd7a144b87FE0ecf5886",
+          "texto": "De tus 90.000: 27.000 en mercados, 36.000 en materiales (no pagado), 27.000 en reconstrucción (no pagado); reembolsados 63.000"
+        }
+      ]
+    },
+    "abierta": {
+      "campana": "0xbe7b500fDa284C61F043f6b78DED734430f8d61e",
+      "txCreacion": "0xdafe29f4965a9bd23d3965a0da766480386ab24a2e508e6328dfbbe834ed0365",
+      "meta": "20000000000000000000000000",
+      "donaciones": {
+        "enviadas": 12,
+        "exitosas": 12,
+        "fallidas": 0,
+        "errores": [],
+        "paralelo": {
+          "cantidad": 12,
+          "ventanaMs": 2992,
+          "tps": 4,
+          "latenciaMs": {
+            "n": 12,
+            "min": 630,
+            "p50": 899,
+            "p95": 1056,
+            "max": 1056,
+            "promedio": 854
+          },
+          "bloquesUsados": 4,
+          "maxDonacionesEnUnBloque": 5,
+          "duracionTotalMs": 3450
+        },
+        "gasLimitPromedio": 620465,
+        "gasUsadoPromedio": 620465,
+        "costoPromedio": "0.0632875065",
+        "txEjemplo": "0x673b91113839511114a6ab397e3d70fa210c8aae66fcb120f62b329637655930"
+      },
+      "recaudado": "4800000000000000000000000",
+      "familias": 20
+    }
+  },
+  "reputacion": [
+    {
+      "rol": "Fundación",
+      "nombre": "Fundación Antioquia Solidaria",
+      "cuenta": "0x8290a4E80a6ee72484884A96758c68a4197c2F0f",
+      "indice": 66.66,
+      "pagadas": 4,
+      "rechazadas": 1,
+      "vencidas": 0,
+      "sobrecostos": 1,
+      "monto": "10600000000000000000000000"
+    },
+    {
+      "rol": "Proveedor",
+      "nombre": "Supermercado La Cosecha",
+      "cuenta": "0x4C111A40EAc847180344367DCC417caCD115F035",
+      "indice": 100,
+      "pagadas": 2,
+      "rechazadas": 0,
+      "vencidas": 0,
+      "sobrecostos": 0,
+      "monto": "3600000000000000000000000"
+    },
+    {
+      "rol": "Proveedor",
+      "nombre": "Ferretería El Constructor",
+      "cuenta": "0xAF1122140c67f411E235AbEc5Aad3585F1704c00",
+      "indice": 33.33,
+      "pagadas": 1,
+      "rechazadas": 1,
+      "vencidas": 0,
+      "sobrecostos": 1,
+      "monto": "4000000000000000000000000"
+    },
+    {
+      "rol": "Proveedor",
+      "nombre": "Constructora Comunitaria",
+      "cuenta": "0x860a310B4B5B88BD243a86d6210a1Bc7ee472f70",
+      "indice": 100,
+      "pagadas": 1,
+      "rechazadas": 0,
+      "vencidas": 0,
+      "sobrecostos": 0,
+      "monto": "3000000000000000000000000"
+    }
+  ],
+  "duracionMs": 92153
+}

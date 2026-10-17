@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseEther, parseSignature, type Address } from "viem";
 import { useAccount, usePublicClient, useSignTypedData, useSwitchChain } from "wagmi";
@@ -6,7 +6,7 @@ import { campanaEmergenciaAbi, mockCOPAbi } from "../abis";
 import { CHAIN_ID, DIRECCIONES, ES_MONAD } from "../config";
 import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
-import { useBilleteraInvisible, donarSinCripto, type PasoDonacion } from "../lib/billeteraInvisible";
+import { ErrorReenvio, useBilleteraInvisible, donarSinCripto, type PagoPrevio, type PasoDonacion } from "../lib/billeteraInvisible";
 import { useCampana, useNombres, useSaldoCop } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
 import { corta, fecha, mismaDireccion, pesos } from "../lib/formato";
@@ -122,6 +122,15 @@ function CajaDonar({ campana }: { campana: Address }) {
 
 // ─────────────────────────── Sin cripto (Nequi / PSE simulado) ───────────────────────────
 
+/** Mensaje corto para la persona: los errores de red del RPC traen URL y cuerpo de la petición. */
+function mensajeDonacion(e: unknown): string {
+  const m = (e as { shortMessage?: string; message?: string })?.shortMessage || (e as Error)?.message || String(e);
+  if (/took too long|timed out|timeout|HTTP request failed|Failed to fetch|fetch failed|limited to/i.test(m)) {
+    return "La red de Monad está respondiendo lento. Espera unos segundos e inténtalo de nuevo.";
+  }
+  return m.split("\n")[0];
+}
+
 const PASOS: { id: PasoDonacion["paso"]; texto: string }[] = [
   { id: "pago", texto: "Pago aprobado" },
   { id: "acreditado", texto: "Pesos convertidos a MockCOP" },
@@ -136,12 +145,16 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
   const [metodo, setMetodo] = useState<"nequi" | "pse">("nequi");
   const [celular, setCelular] = useState("");
   const [banco, setBanco] = useState("Bancolombia");
-  const [fase, setFase] = useState<"formulario" | "pasarela" | "procesando" | "listo">("formulario");
+  const [fase, setFase] = useState<"formulario" | "pasarela" | "procesando" | "error" | "listo">("formulario");
+  const [error, setError] = useState("");
   const [hechos, setHechos] = useState<Set<string>>(new Set());
-  const [resultado, setResultado] = useState<{ referencia: string; hash: string; cuenta: Address; extra: bigint } | null>(null);
+  const [resultado, setResultado] = useState<{ referencia: string; hash?: string; cuenta: Address; extra: bigint } | null>(null);
+  // Pago ya acreditado en un intento que falló después: "Intentar de nuevo" no vuelve a cobrar.
+  const pagoPrevio = useRef<PagoPrevio | undefined>(undefined);
   useEffect(() => {
     setFase("formulario");
     setResultado(null);
+    pagoPrevio.current = undefined;
   }, [campana]);
 
   const valido = montoPesos >= 1000 && montoPesos <= 5_000_000 && (metodo === "pse" || /^3\d{9}$/.test(celular.replace(/\D/g, "")));
@@ -151,13 +164,15 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
     setHechos(new Set());
     const extraAlPagar = extra;
     try {
-      const r = await donarSinCripto(campana, montoPesos, metodo, (p) => setHechos((h) => new Set([...h, p.paso])));
+      const r = await donarSinCripto(campana, montoPesos, metodo, (p) => setHechos((h) => new Set([...h, p.paso])), pagoPrevio.current);
+      pagoPrevio.current = undefined;
       setResultado({ referencia: r.referencia, hash: r.hash, cuenta: r.cuenta, extra: extraAlPagar });
       setFase("listo");
       await qc.invalidateQueries();
     } catch (e) {
-      avisar("error", "No se pudo completar la donación", (e as Error).message);
-      setFase("formulario");
+      if (e instanceof ErrorReenvio && e.pagoPrevio) pagoPrevio.current = e.pagoPrevio;
+      setError(mensajeDonacion(e) + (pagoPrevio.current ? " Tu pago ya quedó acreditado: al reintentar no se te cobra de nuevo." : ""));
+      setFase("error");
     }
   }
 
@@ -183,7 +198,7 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
     );
   }
 
-  if (fase === "pasarela" || fase === "procesando") {
+  if (fase === "pasarela" || fase === "procesando" || fase === "error") {
     return (
       <div className="overflow-hidden rounded-xl border border-stone-200">
         <div className={`px-4 py-3 text-white ${metodo === "nequi" ? "bg-[#200020]" : "bg-[#0b3b8c]"}`}>
@@ -195,7 +210,21 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
             Pagar <strong className="text-stone-900">${montoPesos.toLocaleString("es-CO")}</strong> a Rastro Solidario
             {metodo === "nequi" ? ` desde el celular ${celular}` : ""}.
           </p>
-          {fase === "pasarela" ? (
+          {fase === "error" ? (
+            <>
+              <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">
+                <strong>No se pudo completar la donación.</strong> {error}
+              </p>
+              <div className="flex gap-2">
+                <button className="btn-primario flex-1" onClick={pagar}>
+                  Intentar de nuevo
+                </button>
+                <button className="btn-secundario" onClick={() => setFase("formulario")}>
+                  Volver
+                </button>
+              </div>
+            </>
+          ) : fase === "pasarela" ? (
             <>
               <p className="rounded-lg bg-stone-50 p-3 text-xs text-stone-500">
                 {metodo === "nequi" ? "En la vida real te llegaría una notificación a la app de Nequi para aceptar el pago." : "En la vida real te llevaría al portal de tu banco."} En esta

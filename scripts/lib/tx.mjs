@@ -35,6 +35,7 @@ const esErrorTransitorio = (e) => {
   return (
     m.includes("429") ||
     m.includes("rate") ||
+    m.includes("limited to") || // "requests limited to 15/sec" del RPC público de Monad
     m.includes("too many") ||
     m.includes("timeout") ||
     m.includes("timed out") ||

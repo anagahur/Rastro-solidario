@@ -66,7 +66,19 @@ export function useBilleteraInvisible() {
   return { direccion, crear };
 }
 
-export class ErrorReenvio extends Error {}
+/** Pago que la pasarela ya acreditó en un intento que falló después (para no cobrar dos veces). */
+export interface PagoPrevio {
+  referencia: string;
+  /** aportes(cuenta) en la campaña antes de ese intento */
+  aportesAntes: bigint;
+}
+
+export class ErrorReenvio extends Error {
+  pagoPrevio?: PagoPrevio;
+}
+
+/** Peticiones al servidor de la demo: sin respuesta en este tiempo se informa a la persona. */
+const ESPERA_API_MS = 120_000;
 
 function traducir(revert?: Hex, mensaje?: string): string {
   if (revert) {
@@ -113,6 +125,7 @@ export async function enviarSinGas(cuenta: PrivateKeyAccount, to: Address, data:
   });
   const r = await fetch("/api/reenviar", {
     method: "POST",
+    signal: AbortSignal.timeout(ESPERA_API_MS),
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ request: { from: cuenta.address, to, value: "0", gas: gas.toString(), deadline, data, signature } }),
   });
@@ -149,29 +162,58 @@ export interface PasoDonacion {
   detalle?: string;
 }
 
-/** Donación completa sin cripto: pago simulado → MockCOP → firma → transacción patrocinada. */
+/**
+ * Donación completa sin cripto: pago simulado → MockCOP → firma → transacción patrocinada.
+ * Con `pagoPrevio` (reintento tras un fallo de red) no se vuelve a cobrar si los MockCOP siguen
+ * en la billetera, y si la donación sí alcanzó a entrar a la campaña se da por hecha.
+ */
 export async function donarSinCripto(
   campana: Address,
   montoPesos: number,
   metodo: "nequi" | "pse",
   alAvanzar: (p: PasoDonacion) => void,
+  pagoPrevio?: PagoPrevio,
 ) {
   const cuenta = cuentaInvisible(true)!;
-  const r = await fetch("/api/pasarela/pago", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ cuenta: cuenta.address, montoPesos, metodo }),
-  });
-  const pago = await r.json().catch(() => ({}));
-  if (!r.ok) throw new ErrorReenvio(pago.error || "La pasarela rechazó el pago");
-  alAvanzar({ paso: "pago", detalle: pago.referencia });
+  const cliente = clientePublico();
+  const monto = parseEther(String(montoPesos));
+  const aportes = () => cliente.readContract({ address: campana, abi: campanaEmergenciaAbi, functionName: "aportes", args: [cuenta.address] });
+
+  let pendiente = pagoPrevio;
+  if (pendiente) {
+    if ((await aportes()) > pendiente.aportesAntes) {
+      // El intento anterior sí quedó en la cadena; solo se perdió la respuesta.
+      for (const paso of ["pago", "acreditado", "firmado", "registrado"] as const) alAvanzar({ paso });
+      return { cuenta: cuenta.address, referencia: pendiente.referencia, hash: undefined };
+    }
+    const saldo = await cliente.readContract({ address: DIRECCIONES.cop, abi: mockCOPAbi, functionName: "balanceOf", args: [cuenta.address] });
+    if (saldo < monto) pendiente = undefined;
+  }
+  if (!pendiente) {
+    const aportesAntes = await aportes();
+    const r = await fetch("/api/pasarela/pago", {
+      method: "POST",
+      signal: AbortSignal.timeout(ESPERA_API_MS),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cuenta: cuenta.address, montoPesos, metodo }),
+    });
+    const pago = await r.json().catch(() => ({}));
+    if (!r.ok) throw new ErrorReenvio(pago.error || "La pasarela rechazó el pago");
+    pendiente = { referencia: pago.referencia as string, aportesAntes };
+  }
+  alAvanzar({ paso: "pago", detalle: pendiente.referencia });
   alAvanzar({ paso: "acreditado" });
 
-  const monto = parseEther(String(montoPesos));
-  const { deadline, v, r: rr, s } = await firmarPermiso(cuenta, campana, monto);
-  alAvanzar({ paso: "firmado" });
-  const data = encodeFunctionData({ abi: campanaEmergenciaAbi, functionName: "donarConPermit", args: [monto, deadline, v, rr, s] });
-  const envio = await enviarSinGas(cuenta, campana, data);
-  alAvanzar({ paso: "registrado", detalle: envio.hash });
-  return { cuenta: cuenta.address, referencia: pago.referencia as string, ...envio };
+  try {
+    const { deadline, v, r: rr, s } = await firmarPermiso(cuenta, campana, monto);
+    alAvanzar({ paso: "firmado" });
+    const data = encodeFunctionData({ abi: campanaEmergenciaAbi, functionName: "donarConPermit", args: [monto, deadline, v, rr, s] });
+    const envio = await enviarSinGas(cuenta, campana, data);
+    alAvanzar({ paso: "registrado", detalle: envio.hash });
+    return { cuenta: cuenta.address, referencia: pendiente.referencia, ...envio };
+  } catch (e) {
+    const err = e instanceof ErrorReenvio ? e : new ErrorReenvio((e as { shortMessage?: string })?.shortMessage || (e as Error)?.message || String(e));
+    err.pagoPrevio = pendiente;
+    throw err;
+  }
 }

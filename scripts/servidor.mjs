@@ -15,13 +15,13 @@ import path from "node:path";
 import {
   createPublicClient,
   createWalletClient,
-  http,
+  formatEther,
   isAddress,
   parseEther,
   toFunctionSelector,
 } from "viem";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
-import { MNEMONIC_ANVIL, PK_ANVIL_0, RAIZ, redPorNombre } from "./lib/entorno.mjs";
+import { MNEMONIC_ANVIL, PK_ANVIL_0, RAIZ, redPorNombre, transporteRed } from "./lib/entorno.mjs";
 import { MAX_BYTES, gatewayPublico, guardar, leer } from "./lib/evidencias.mjs";
 
 const ABI_FORWARDER = [
@@ -80,24 +80,48 @@ const PERMITIDAS = {
   [toFunctionSelector("reclamarReembolso()")]: "reclamar reembolso",
 };
 const GAS_MAXIMO = 1_500_000n;
+
+/** En Monad se cobra el gas LIMIT: falla con un mensaje claro si la cuenta no alcanza a pagarlo. */
+async function exigirSaldo(ctx, cuenta, gas, quien) {
+  const [saldo, precio] = await Promise.all([ctx.publico.getBalance({ address: cuenta }), ctx.publico.getGasPrice()]);
+  const necesario = (gas * precio * 12n) / 10n;
+  if (saldo < necesario) {
+    const sym = ctx.red.nativeCurrency.symbol;
+    throw Object.assign(
+      new Error(`${quien} se quedó sin ${sym} (tiene ${formatEther(saldo)}, necesita ≈ ${formatEther(necesario)}). Recárgalo con: pnpm recargar:monad`),
+      { estado: 503 },
+    );
+  }
+}
 const MAX_PAGO_PESOS = 5_000_000;
 
+/** Cuánto se espera a que una transacción entre a un bloque antes de rendirse. */
+const ESPERA_RECIBO_MS = 60_000;
+
+// Los clientes se crean una vez por despliegue (se recrean si cambia reports/deploy-<id>.json).
+let ctxCache = null;
 function contexto(chainId) {
   const red = redPorNombre(String(chainId));
   const ruta = path.join(RAIZ, "reports", `deploy-${chainId}.json`);
   if (!fs.existsSync(ruta)) return null;
+  const version = fs.statSync(ruta).mtimeMs;
+  if (ctxCache?.ruta === ruta && ctxCache.version === version) return ctxCache.ctx;
   const reporte = JSON.parse(fs.readFileSync(ruta, "utf8"));
   const esLocal = red.id === 31337;
   const pk = esLocal ? PK_ANVIL_0 : process.env.DEPLOYER_PRIVATE_KEY;
   const mnemonic = esLocal ? MNEMONIC_ANVIL : process.env.SIM_MNEMONIC;
-  const transporte = http(red.rpcUrls.default.http[0], { timeout: 30_000 });
-  return {
+  const transporte = transporteRed(red);
+  // Monad produce un bloque cada ~400 ms: consultar recibos cada 500 ms en vez de cada 4 s.
+  const pollingInterval = esLocal ? 1000 : 500;
+  const ctx = {
     red,
     reporte,
-    publico: createPublicClient({ chain: red, transport: transporte }),
-    emisor: pk ? createWalletClient({ chain: red, transport: transporte, account: privateKeyToAccount(pk.startsWith("0x") ? pk : `0x${pk}`) }) : null,
-    patrocinador: mnemonic ? createWalletClient({ chain: red, transport: transporte, account: mnemonicToAccount(mnemonic, { addressIndex: 9 }) }) : null,
+    publico: createPublicClient({ chain: red, transport: transporte, pollingInterval }),
+    emisor: pk ? createWalletClient({ chain: red, transport: transporte, pollingInterval, account: privateKeyToAccount(pk.startsWith("0x") ? pk : `0x${pk}`) }) : null,
+    patrocinador: mnemonic ? createWalletClient({ chain: red, transport: transporte, pollingInterval, account: mnemonicToAccount(mnemonic, { addressIndex: 9 }) }) : null,
   };
+  ctxCache = { ruta, version, ctx };
+  return ctx;
 }
 
 // Cada cuenta envía de a una transacción (evita choques de nonce entre peticiones simultáneas).
@@ -178,6 +202,7 @@ async function reenviar(ctx, cuerpo) {
     throw Object.assign(new Error(e.shortMessage || "La acción revertiría"), { estado: 422, revert: datosRevert(e) });
   }
 
+  await exigirSaldo(ctx, ctx.patrocinador.account.address, req.gas + 100_000n, "El patrocinador de gas");
   return enCola(ctx.patrocinador.account.address, async () => {
     const estimado = await publico.estimateContractGas({
       account: ctx.patrocinador.account,
@@ -193,7 +218,7 @@ async function reenviar(ctx, cuerpo) {
       args: [req],
       gas: estimado + estimado / 5n,
     });
-    const recibo = await publico.waitForTransactionReceipt({ hash });
+    const recibo = await publico.waitForTransactionReceipt({ hash, timeout: ESPERA_RECIBO_MS });
     if (recibo.status !== "success") throw Object.assign(new Error("La transacción revirtió"), { estado: 500, hash });
     return { hash, bloque: recibo.blockNumber, accion, patrocinador: ctx.patrocinador.account.address, gasPagado: recibo.gasUsed * recibo.effectiveGasPrice };
   });
@@ -208,11 +233,13 @@ async function pago(ctx, cuerpo) {
   if (!(monto >= 1000 && monto <= MAX_PAGO_PESOS)) {
     throw Object.assign(new Error(`El monto debe estar entre 1.000 y ${MAX_PAGO_PESOS.toLocaleString("es-CO")}`), { estado: 400 });
   }
+  await exigirSaldo(ctx, ctx.emisor.account.address, 150_000n, "La cuenta administradora (pasarela)");
   await dormir(900); // la pasarela "procesa" el pago
   const hash = await enCola(ctx.emisor.account.address, () =>
     ctx.emisor.writeContract({ address: ctx.reporte.MockCOP, abi: ABI_COP, functionName: "mintLote", args: [[cuenta], [parseEther(String(monto))]] }),
   );
-  await ctx.publico.waitForTransactionReceipt({ hash });
+  const recibo = await ctx.publico.waitForTransactionReceipt({ hash, timeout: ESPERA_RECIBO_MS });
+  if (recibo.status !== "success") throw Object.assign(new Error("La acreditación de MockCOP revirtió"), { estado: 500, hash });
   const referencia = `${metodo === "pse" ? "PSE" : "NEQ"}-${Date.now().toString(36).toUpperCase()}`;
   return { aprobado: true, metodo, referencia, montoPesos: monto, txAcunacion: hash };
 }

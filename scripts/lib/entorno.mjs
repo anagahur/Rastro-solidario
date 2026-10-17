@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { defineChain } from "viem";
+import { defineChain, fallback, http } from "viem";
 
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 dotenv.config({ path: path.join(RAIZ, ".env") });
@@ -19,11 +19,26 @@ export const anvil = defineChain({
   testnet: true,
 });
 
+/**
+ * RPCs de Monad testnet: el configurado primero y luego los de respaldo (el público oficial se
+ * pone lento o limita a 15 peticiones/s en momentos de carga). MONAD_RPC_RESPALDO acepta una
+ * lista separada por comas; vacío ("MONAD_RPC_RESPALDO=") desactiva el respaldo.
+ */
+export const RPCS_MONAD = [
+  process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz",
+  ...(process.env.MONAD_RPC_RESPALDO ?? "https://rpc.ankr.com/monad_testnet,https://monad-testnet.drpc.org")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+].filter((u, i, a) => a.indexOf(u) === i);
+
 export const monadTestnet = defineChain({
   id: 10143,
   name: "Monad Testnet",
+  // Bloques de ~400 ms: viem usa esto para el intervalo con que espera recibos (si no, 4 s).
+  blockTime: 400,
   nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
-  rpcUrls: { default: { http: [process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz"] } },
+  rpcUrls: { default: { http: RPCS_MONAD } },
   blockExplorers: {
     default: {
       name: "MonadVision",
@@ -32,6 +47,17 @@ export const monadTestnet = defineChain({
   },
   testnet: true,
 });
+
+/**
+ * Transporte con respaldo: si un RPC falla (caído, lento o límite de tasa) se pasa al siguiente.
+ * Las transacciones se firman localmente, así que cualquier nodo puede difundirlas.
+ */
+export function transporteRed(red, { timeout = 20_000 } = {}) {
+  const urls = red.rpcUrls.default.http;
+  if (urls.length === 1) return http(urls[0], { timeout, retryCount: 2, retryDelay: 300 });
+  // Sin reintentos por nodo: ante un error se pasa enseguida al siguiente; se reintenta la cadena.
+  return fallback(urls.map((url) => http(url, { timeout, retryCount: 0 })), { retryCount: 2, retryDelay: 300 });
+}
 
 export function redPorNombre(nombre) {
   if (nombre === "local" || nombre === "31337") return anvil;

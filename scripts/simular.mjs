@@ -5,7 +5,8 @@
 //   pnpm simular:monad -- --donantes 30        menos donantes (gasta menos MON)
 //   pnpm simular:monad -- --estimar            solo calcula cuánto MON se necesita
 //   pnpm simular:monad -- --escenario completo|falla|abierta|vencimiento|todos
-//   pnpm simular:monad -- --recuperar          devuelve al deployer el MON sobrante de las wallets simuladas
+//   pnpm simular:monad -- --recuperar          devuelve al deployer el MON sobrante de los donantes simulados
+//                                              (fundación, verificadores, empresa y patrocinador conservan su saldo)
 //
 // Escenarios:
 //   completo     Una empresa aliada duplica donaciones; N donantes donan en paralelo; la Junta de
@@ -65,7 +66,7 @@ const N_VENCE = 5;
 const N_ABIERTA = 12;
 const N_FAMILIAS = Math.max(5, Math.min(200, Number(valor("--familias", 20))));
 const ESCENARIO = valor("--escenario", "todos"); // completo | falla | abierta | vencimiento | todos
-const CONCURRENCIA = Number(valor("--concurrencia", esMonad ? 16 : 50));
+const CONCURRENCIA = Number(valor("--concurrencia", esMonad ? 6 : 50)); // el RPC público de Monad admite ~15 peticiones/s
 const SEMILLA = Number(valor("--semilla", 2026));
 const explorador = esMonad ? red.blockExplorers.default.url : null;
 
@@ -232,7 +233,9 @@ async function recuperar() {
   await rastreador.iniciar();
   const fees = await remitente.actualizarFees();
   const costo = 21_000n * fees.maxFeePerGas;
-  const todas = [fundacion, ...verificadores, empresa, patrocinador];
+  // Solo los donantes simulados: la fundación, los verificadores, la empresa y el patrocinador de
+  // gas siguen usándose en la demo en vivo (panel de actores y donaciones sin cripto).
+  const todas = [];
   for (const [esc, n] of Object.entries({ completo: N_DONANTES, falla: N_FALLA, vencimiento: N_VENCE, abierta: N_ABIERTA })) {
     todas.push(...donantesDe(esc, n));
   }
