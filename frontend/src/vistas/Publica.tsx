@@ -19,11 +19,11 @@ interface Hito {
 }
 
 const TONOS: Record<Hito["tono"], string> = {
-  neutro: "bg-stone-200 text-stone-700",
-  bueno: "bg-emerald-600 text-white",
-  alerta: "bg-rose-600 text-white",
-  malo: "bg-rose-100 text-rose-800",
-  comunidad: "bg-violet-600 text-white",
+  neutro: "bg-neutro-100 text-neutro-600",
+  bueno: "bg-exito-600 text-white",
+  alerta: "bg-peligro-600 text-white",
+  malo: "bg-peligro-100 text-peligro-800",
+  comunidad: "bg-comunidad-600 text-white",
 };
 
 /**
@@ -152,13 +152,13 @@ export function VistaPublica({ campana }: { campana?: Address }) {
           {hitos.length === 0 ? (
             <Vacio>Cargando…</Vacio>
           ) : (
-            <ol className="relative space-y-4 border-l-2 border-stone-200 pl-6">
+            <ol className="relative ml-1 space-y-5 border-l-2 border-dashed border-neutro-200 pl-7">
               {hitos.map((h, i) => (
                 <li key={i} className="relative">
-                  <span className={`absolute -left-[37px] flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${TONOS[h.tono]}`}>{h.icono}</span>
-                  <p className="text-xs text-stone-400">{fecha(h.fecha)}</p>
-                  <p className={`font-semibold ${h.tono === "alerta" ? "text-rose-700" : "text-stone-900"}`}>{h.titulo}</p>
-                  {h.detalle && <p className="text-sm text-stone-600">{h.detalle}</p>}
+                  <span className={`absolute -left-[45px] flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ring-4 ring-white ${TONOS[h.tono]}`}>{h.icono}</span>
+                  <p className="text-xs font-medium tabular text-neutro-400">{fecha(h.fecha)}</p>
+                  <p className={`font-semibold ${h.tono === "alerta" ? "text-peligro-700" : "text-neutro-900"}`}>{h.titulo}</p>
+                  {h.detalle && <p className="text-sm text-neutro-600">{h.detalle}</p>}
                 </li>
               ))}
             </ol>
@@ -177,9 +177,9 @@ export function VistaPublica({ campana }: { campana?: Address }) {
           <Seccion titulo="Galería de evidencias">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {galeria.map((g, i) => (
-                <a key={`${g.uri}-${i}`} href={urlIpfs(g.uri)} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-stone-200 bg-white">
+                <a key={`${g.uri}-${i}`} href={urlIpfs(g.uri)} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-neutro-200 bg-white">
                   <img src={urlIpfs(g.uri)} alt={g.titulo} loading="lazy" className="aspect-[4/3] w-full object-cover transition group-hover:scale-[1.02]" />
-                  <p className="truncate px-2 py-1.5 text-xs text-stone-600" title={g.titulo}>
+                  <p className="truncate px-2 py-1.5 text-xs text-neutro-600" title={g.titulo}>
                     {g.integridad === "verificada" ? "✓ " : ""}
                     {g.titulo}
                   </p>
@@ -220,11 +220,11 @@ export function VistaPublica({ campana }: { campana?: Address }) {
               Descargar todo con evidencias (JSON)
             </button>
           </div>
-          <p className="mt-3 break-all font-mono text-[11px] text-stone-400">Contrato: {campana}</p>
+          <p className="mt-3 break-all font-mono text-[11px] text-neutro-400">Contrato: {campana}</p>
         </Seccion>
 
-        <section className="tarjeta text-sm text-stone-600">
-          <h3 className="font-bold text-stone-900">¿Cómo se protege el dinero?</h3>
+        <section className="tarjeta text-sm text-neutro-600">
+          <h3 className="font-bold text-neutro-900">¿Cómo se protege el dinero?</h3>
           <ul className="mt-2 list-disc space-y-1.5 pl-5">
             <li>El dinero está en un contrato: la fundación no puede tocarlo.</li>
             <li>Cada pago exige verificadores independientes con foto, fecha y ubicación.</li>

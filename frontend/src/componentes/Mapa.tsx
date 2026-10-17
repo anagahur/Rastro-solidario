@@ -64,5 +64,5 @@ export function Mapa({ puntos, alto = 320 }: { puntos: PuntoMapa[]; alto?: numbe
     else if (limites.length > 1) mapa.current.fitBounds(L.latLngBounds(limites), { padding: [30, 30], maxZoom: 16 });
   }, [puntos]);
 
-  return <div ref={caja} style={{ height: alto }} className="z-0 w-full overflow-hidden rounded-xl border border-stone-200" />;
+  return <div ref={caja} style={{ height: alto }} className="z-0 w-full overflow-hidden rounded-xl border border-neutro-200" />;
 }

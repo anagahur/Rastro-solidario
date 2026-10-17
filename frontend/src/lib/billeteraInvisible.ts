@@ -11,37 +11,61 @@ import { useCallback, useEffect, useState } from "react";
 import {
   decodeErrorResult,
   encodeFunctionData,
+  hexToBytes,
   parseEther,
   parseSignature,
+  sha256,
+  toHex,
   type Address,
   type Hex,
   type PrivateKeyAccount,
 } from "viem";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { generateMnemonic, mnemonicToAccount, privateKeyToAccount, spanish } from "viem/accounts";
 import { campanaEmergenciaAbi, mockCOPAbi, reenviadorGasAbi } from "../abis";
 import { CHAIN_ID, DIRECCIONES } from "../config";
 import { MENSAJES } from "./errores";
 import { clientePublico } from "./cliente";
 
 const CLAVE = "rastro:billetera-invisible";
+// 12 palabras en español (BIP-39) de las que sale la llave: con ellas se recupera la billetera
+// en otro celular. Las billeteras creadas antes solo tienen la llave (se respaldan con ella).
+const CLAVE_PALABRAS = "rastro:billetera-palabras";
+const CLAVE_RESPALDADA = "rastro:billetera-respaldada";
 
-function leerLlave(): Hex | null {
+const leer = (k: string) => {
   try {
-    const v = localStorage.getItem(CLAVE);
-    return v && /^0x[0-9a-fA-F]{64}$/.test(v) ? (v as Hex) : null;
+    return localStorage.getItem(k);
   } catch {
     return null;
   }
+};
+const escribir = (k: string, v: string | null) => {
+  try {
+    if (v === null) localStorage.removeItem(k);
+    else localStorage.setItem(k, v);
+  } catch {}
+};
+const avisarCambio = () => window.dispatchEvent(new Event("rastro:billetera"));
+
+function leerLlave(): Hex | null {
+  const v = leer(CLAVE);
+  return v && /^0x[0-9a-fA-F]{64}$/.test(v) ? (v as Hex) : null;
+}
+
+/** Llave de la cuenta 0 (m/44'/60'/0'/0/0) de unas palabras: la misma que daría MetaMask. */
+function llaveDePalabras(palabras: string): Hex {
+  return toHex(mnemonicToAccount(palabras).getHdKey().privateKey!);
 }
 
 export function cuentaInvisible(crear = false): PrivateKeyAccount | null {
   let llave = leerLlave();
   if (!llave && crear) {
-    llave = generatePrivateKey();
-    try {
-      localStorage.setItem(CLAVE, llave);
-    } catch {}
-    window.dispatchEvent(new Event("rastro:billetera"));
+    const palabras = generateMnemonic(spanish);
+    llave = llaveDePalabras(palabras);
+    escribir(CLAVE_PALABRAS, palabras);
+    escribir(CLAVE, llave);
+    escribir(CLAVE_RESPALDADA, null);
+    avisarCambio();
   }
   return llave ? privateKeyToAccount(llave) : null;
 }
@@ -50,11 +74,87 @@ export function exportarLlave(): Hex | null {
   return leerLlave();
 }
 
-/** Dirección de la billetera invisible de este navegador (si ya existe). */
+/** Lo que la persona debe guardar: sus 12 palabras o, si su billetera es anterior, la llave. */
+export function respaldo(): { tipo: "palabras"; palabras: string[] } | { tipo: "llave"; llave: Hex } | null {
+  const llave = leerLlave();
+  if (!llave) return null;
+  const palabras = leer(CLAVE_PALABRAS);
+  if (palabras && llaveDePalabras(palabras) === llave) return { tipo: "palabras", palabras: palabras.split(" ") };
+  return { tipo: "llave", llave };
+}
+
+/** La persona confirmó que guardó su respaldo (se recuerda por dirección). */
+export function marcarRespaldada(direccion: Address) {
+  escribir(CLAVE_RESPALDADA, direccion.toLowerCase());
+  avisarCambio();
+}
+
+// ─── Recuperación ───
+
+const sinTildes = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const LISTA = spanish.map(sinTildes);
+
+/**
+ * Convierte lo que escribió la persona en las palabras exactas de la lista. Acepta palabras sin
+ * tildes, en mayúsculas, numeradas ("1. árbol"), separadas por comas, o solo sus 4 primeras letras
+ * (en la lista española son únicas). Comprueba el dígito de control para detectar errores.
+ */
+export function interpretarRespaldo(texto: string): { llave: Hex; palabras?: string } | { error: string; faltan?: number } {
+  const limpio = texto.trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(limpio)) return { llave: limpio as Hex };
+
+  const escritas = limpio
+    .split(/[\s,;]+/)
+    .map((p) => p.replace(/^\d+[.)-]?$/, "").replace(/^\d+[.)-]/, ""))
+    .filter(Boolean);
+  if (escritas.length === 0) return { error: "Escribe tus 12 palabras.", faltan: 12 };
+  if (escritas.length < 12) return { error: `Van ${escritas.length} de 12 palabras.`, faltan: 12 - escritas.length };
+  if (escritas.length > 12) return { error: `Escribiste ${escritas.length} palabras; son 12.` };
+
+  const indices: number[] = [];
+  const raras: string[] = [];
+  escritas.forEach((p, i) => {
+    const s = sinTildes(p);
+    let j = LISTA.indexOf(s);
+    if (j < 0 && s.length >= 4) {
+      const candidatas = LISTA.flatMap((w, k) => (w.startsWith(s.slice(0, 4)) ? [k] : []));
+      if (candidatas.length === 1) j = candidatas[0];
+    }
+    if (j < 0) raras.push(`${i + 1} («${p}»)`);
+    indices.push(j);
+  });
+  if (raras.length) return { error: `No reconozco la palabra ${raras.join(", ")}. Revisa cómo la escribiste.` };
+
+  // 12 palabras = 132 bits: 128 de entropía + 4 de control (los primeros bits de su sha256)
+  const bits = indices.map((n) => n.toString(2).padStart(11, "0")).join("");
+  const entropia = new Uint8Array(16).map((_, k) => parseInt(bits.slice(k * 8, k * 8 + 8), 2));
+  const control = hexToBytes(sha256(entropia))[0] >> 4;
+  if (control !== parseInt(bits.slice(128), 2)) return { error: "Las palabras no coinciden entre sí: puede haber una equivocada o en otro orden." };
+
+  const palabras = indices.map((n) => spanish[n]).join(" ");
+  return { llave: llaveDePalabras(palabras), palabras };
+}
+
+/** Restaura la billetera en este navegador. Devuelve su dirección. */
+export function restaurarBilletera(r: { llave: Hex; palabras?: string }): Address {
+  escribir(CLAVE, r.llave);
+  escribir(CLAVE_PALABRAS, r.palabras ?? null);
+  const direccion = privateKeyToAccount(r.llave).address;
+  // Quien la recupera ya tenía su respaldo
+  escribir(CLAVE_RESPALDADA, direccion.toLowerCase());
+  avisarCambio();
+  return direccion;
+}
+
+/** Dirección de la billetera invisible de este navegador (si ya existe) y si ya está respaldada. */
 export function useBilleteraInvisible() {
-  const [direccion, setDireccion] = useState<Address | undefined>(() => cuentaInvisible()?.address);
+  const estado = () => {
+    const direccion = cuentaInvisible()?.address;
+    return { direccion, respaldada: !!direccion && leer(CLAVE_RESPALDADA) === direccion.toLowerCase() };
+  };
+  const [{ direccion, respaldada }, setEstado] = useState(estado);
   useEffect(() => {
-    const f = () => setDireccion(cuentaInvisible()?.address);
+    const f = () => setEstado(estado());
     window.addEventListener("rastro:billetera", f);
     window.addEventListener("storage", f);
     return () => {
@@ -63,7 +163,7 @@ export function useBilleteraInvisible() {
     };
   }, []);
   const crear = useCallback(() => cuentaInvisible(true)!, []);
-  return { direccion, crear };
+  return { direccion, respaldada, crear };
 }
 
 export class ErrorReenvio extends Error {}

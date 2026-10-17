@@ -12,6 +12,6 @@ export function Qr({ texto, tamano = 180, className = "" }: { texto: string; tam
       vivo = false;
     };
   }, [texto, tamano]);
-  if (!url) return <div className={`animate-pulse rounded-lg bg-stone-200 ${className}`} style={{ width: tamano, height: tamano }} />;
+  if (!url) return <div className={`animate-pulse rounded-lg bg-neutro-200 ${className}`} style={{ width: tamano, height: tamano }} />;
   return <img src={url} width={tamano} height={tamano} alt="Código QR" className={`rounded-lg ${className}`} />;
 }

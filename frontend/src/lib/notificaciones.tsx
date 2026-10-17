@@ -28,10 +28,11 @@ export function ProveedorNotificaciones({ children }: { children: ReactNode }) {
   );
 
   const estilos: Record<Tipo, string> = {
-    exito: "border-emerald-300 bg-emerald-50 text-emerald-900",
-    error: "border-rose-300 bg-rose-50 text-rose-900",
-    info: "border-sky-300 bg-sky-50 text-sky-900",
+    exito: "bg-exito-600",
+    error: "bg-peligro-600",
+    info: "bg-info-600",
   };
+  const iconos: Record<Tipo, string> = { exito: "✓", error: "!", info: "i" };
 
   return (
     <Ctx.Provider value={avisar}>
@@ -39,13 +40,16 @@ export function ProveedorNotificaciones({ children }: { children: ReactNode }) {
         {children}
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4 sm:items-end sm:pr-6" aria-live="polite">
           {avisos.map((a) => (
-            <div key={a.id} className={`pointer-events-auto w-full max-w-sm rounded-xl border px-4 py-3 shadow-lg ${estilos[a.tipo]}`}>
+            <div key={a.id} className="pointer-events-auto w-full max-w-sm rounded-2xl border border-neutro-200/80 bg-white px-4 py-3.5 text-neutro-800 shadow-elevada">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold">{a.titulo}</p>
-                  {a.detalle && <p className="mt-0.5 break-words text-sm opacity-90">{a.detalle}</p>}
+                <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${estilos[a.tipo]}`} aria-hidden>
+                  {iconos[a.tipo]}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-neutro-900">{a.titulo}</p>
+                  {a.detalle && <p className="mt-0.5 break-words text-sm text-neutro-600">{a.detalle}</p>}
                   {a.enlace && (
-                    <a href={a.enlace} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-medium underline">
+                    <a href={a.enlace} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-semibold text-marca-700 hover:underline">
                       Ver en el explorador ↗
                     </a>
                   )}

@@ -35,9 +35,9 @@ export function VistaReputacion() {
           </>
         }
       >
-        <div className="flex flex-wrap gap-1 rounded-xl bg-stone-100 p-1 text-sm font-semibold">
+        <div className="segmentado flex w-fit max-w-full flex-wrap" role="tablist" aria-label="Tipo de actor">
           {PESTANAS.map((p) => (
-            <button key={p.id} className={`rounded-lg px-3 py-2 ${pestana === p.id ? "bg-white text-teal-800 shadow-sm" : "text-stone-500"}`} onClick={() => setPestana(p.id)}>
+            <button key={p.id} role="tab" aria-selected={pestana === p.id} className={pestana === p.id ? "segmento-activo" : "segmento"} onClick={() => setPestana(p.id)}>
               {p.texto} ({actores[p.id].length})
             </button>
           ))}
@@ -88,36 +88,43 @@ function TarjetaActor({ cuenta, nombre, rep, tipo }: { cuenta: Address; nombre: 
   const mostrarIndice = tipo === "fundaciones" || tipo === "proveedores";
 
   return (
-    <article className="tarjeta">
+    <article className="tarjeta transition hover:-translate-y-0.5 hover:shadow-elevada">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-bold text-stone-900">{nombre}</p>
-          <Direccion valor={cuenta} />
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-marca-50 font-display text-lg font-extrabold text-marca-700 ring-1 ring-inset ring-marca-100">
+            {nombre.trim().charAt(0).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="line-clamp-2 font-display font-bold leading-snug text-neutro-900" title={nombre}>
+              {nombre}
+            </p>
+            <Direccion valor={cuenta} />
+          </div>
         </div>
         {mostrarIndice && (
-          <div className={`shrink-0 rounded-2xl px-3 py-2 text-center ${tonoIndice(indice)}`}>
-            <p className="text-2xl font-bold leading-none">{indice === null ? "—" : `${Math.round(indice)}%`}</p>
+          <div className={`shrink-0 rounded-xl px-3 py-2 text-center ring-1 ring-inset ring-black/5 ${tonoIndice(indice)}`}>
+            <p className="font-display text-2xl font-extrabold leading-none">{indice === null ? "—" : `${Math.round(indice)}%`}</p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide">confianza</p>
           </div>
         )}
       </div>
       {mostrarIndice && indice !== null && (
-        <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-stone-200" aria-hidden>
-          <div className="bg-emerald-500" style={{ flex: rep!.etapasPagadas }} />
-          <div className="bg-rose-500" style={{ flex: rep!.etapasRechazadas }} />
-          <div className="bg-amber-500" style={{ flex: rep!.etapasVencidas }} />
-          <div className="bg-rose-800" style={{ flex: rep!.sobrecostos }} />
+        <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-neutro-200" aria-hidden>
+          <div className="bg-exito-500" style={{ flex: rep!.etapasPagadas }} />
+          <div className="bg-peligro-500" style={{ flex: rep!.etapasRechazadas }} />
+          <div className="bg-alerta-500" style={{ flex: rep!.etapasVencidas }} />
+          <div className="bg-peligro-800" style={{ flex: rep!.sobrecostos }} />
         </div>
       )}
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         {datos.map(([t, v]) => (
           <div key={t}>
-            <dt className="text-xs text-stone-500">{t}</dt>
-            <dd className={`font-semibold ${t === "Sobrecostos" && Number(v) > 0 ? "text-rose-700" : t === "Rechazadas" && Number(v) > 0 ? "text-rose-700" : "text-stone-900"}`}>{v}</dd>
+            <dt className="text-xs text-neutro-500">{t}</dt>
+            <dd className={`font-semibold ${t === "Sobrecostos" && Number(v) > 0 ? "text-peligro-700" : t === "Rechazadas" && Number(v) > 0 ? "text-peligro-700" : "text-neutro-900"}`}>{v}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-[11px] text-stone-400">{rep && rep.ultimaActividad > 0n ? `Última actividad: ${fecha(rep.ultimaActividad)}` : "Sin actividad todavía"}</p>
+      <p className="mt-3 text-[11px] text-neutro-400">{rep && rep.ultimaActividad > 0n ? `Última actividad: ${fecha(rep.ultimaActividad)}` : "Sin actividad todavía"}</p>
     </article>
   );
 }

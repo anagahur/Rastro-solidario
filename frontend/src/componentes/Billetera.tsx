@@ -29,7 +29,13 @@ export function Billetera() {
           }
         }}
       >
-        {isPending ? "Conectando…" : "Conectar MetaMask"}
+        {isPending ? (
+          "Conectando…"
+        ) : (
+          <span>
+            Conectar<span className="hidden sm:inline"> MetaMask</span>
+          </span>
+        )}
       </button>
     );
   }
@@ -37,7 +43,7 @@ export function Billetera() {
   if (chainId !== CHAIN_ID) {
     return (
       <button
-        className="btn bg-amber-500 text-white hover:bg-amber-600"
+        className="btn bg-alerta-500 text-white hover:bg-alerta-600"
         disabled={cambiando}
         onClick={() => switchChainAsync({ chainId: CHAIN_ID }).catch((e) => avisar("error", "No se pudo cambiar de red", mensajeError(e)))}
       >
@@ -48,7 +54,7 @@ export function Billetera() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="rounded-full border border-stone-200 bg-white px-3 py-1.5 font-mono text-xs text-stone-600" title={address}>
+      <span className="rounded-full border border-neutro-200 bg-white px-3 py-1.5 font-mono text-xs text-neutro-600" title={address}>
         {corta(address)}
       </span>
       <button className="btn-secundario px-3 py-1.5 text-xs" onClick={() => disconnect()}>
@@ -65,8 +71,8 @@ export function SaldoYFaucet() {
   if (!isConnected || chainId !== CHAIN_ID) return null;
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
-      <span className="text-stone-500">
-        Tu saldo: <strong className="text-stone-800">{pesos(saldo)} MockCOP</strong>
+      <span className="text-neutro-500">
+        Tu saldo: <strong className="text-neutro-800">{pesos(saldo)} MockCOP</strong>
       </span>
       <button
         className="btn-secundario px-3 py-1.5 text-xs"

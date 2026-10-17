@@ -94,14 +94,14 @@ export function SubirEvidencia({
   const puede = archivos.length > 0 || nota.trim().length > 0;
 
   return (
-    <div className="space-y-3 rounded-xl border border-stone-200 bg-white p-3">
+    <div className="space-y-3 rounded-xl border border-neutro-200 bg-white p-3">
       <span className="etiqueta">{etiqueta}</span>
       <input
         type="file"
         multiple
         accept="image/*,application/pdf"
         capture="environment"
-        className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-stone-200 file:px-3 file:py-2 file:text-sm file:font-medium"
+        className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-neutro-200 file:px-3 file:py-2 file:text-sm file:font-medium"
         onChange={(e) => setArchivos([...(e.target.files ?? [])].slice(0, 4))}
         aria-label="Foto o documento"
       />
@@ -109,9 +109,9 @@ export function SubirEvidencia({
         <div className="flex flex-wrap gap-2">
           {vistas.map((v) =>
             v.url ? (
-              <img key={v.nombre} src={v.url} alt={v.nombre} className="h-20 w-20 rounded-lg border border-stone-200 object-cover" />
+              <img key={v.nombre} src={v.url} alt={v.nombre} className="h-20 w-20 rounded-lg border border-neutro-200 object-cover" />
             ) : (
-              <span key={v.nombre} className="flex h-20 w-20 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 p-1 text-center text-[10px] text-stone-500">
+              <span key={v.nombre} className="flex h-20 w-20 items-center justify-center rounded-lg border border-neutro-200 bg-neutro-50 p-1 text-center text-[10px] text-neutro-500">
                 {v.nombre}
               </span>
             ),
@@ -125,7 +125,7 @@ export function SubirEvidencia({
         </button>
         {ubicacion && (
           <>
-            <a className="font-mono text-xs text-teal-700 hover:underline" href={enlaceMapa(ubicacion)} target="_blank" rel="noreferrer">
+            <a className="font-mono text-xs text-marca-700 hover:underline" href={enlaceMapa(ubicacion)} target="_blank" rel="noreferrer">
               {ubicacion.lat}, {ubicacion.lng} (±{ubicacion.precisionM ?? "?"} m)
             </a>
             <input className="campo flex-1 py-1.5 text-xs" placeholder="Lugar (barrio, vereda)" value={lugar} onChange={(e) => setLugar(e.target.value)} maxLength={80} />
@@ -136,7 +136,7 @@ export function SubirEvidencia({
         <button type="button" className="btn-secundario" onClick={preparar} disabled={!puede || estado === "subiendo" || estado === "lista"}>
           {estado === "subiendo" ? "Subiendo a IPFS…" : estado === "lista" ? "✓ Evidencia lista" : "Subir evidencia"}
         </button>
-        <span className="text-[11px] text-stone-400">Fecha y hora se agregan solas. En la cadena queda el enlace ipfs:// y su hash.</span>
+        <span className="text-[11px] text-neutro-400">Fecha y hora se agregan solas. En la cadena queda el enlace ipfs:// y su hash.</span>
       </div>
       {lista && (
         <p className="hash">
@@ -145,7 +145,7 @@ export function SubirEvidencia({
           keccak256 {lista.hash}
         </p>
       )}
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-xs text-peligro-700">{error}</p>}
     </div>
   );
 }
@@ -176,46 +176,46 @@ export function VerEvidencia({ uri, hash, compacta = false }: { uri?: string; ha
 
   if (!uri) {
     return hayHash(hash) ? (
-      <p className="text-xs text-stone-500">
+      <p className="text-xs text-neutro-500">
         Solo hash (sin documento público): <span className="hash">{hash}</span>
       </p>
     ) : null;
   }
-  if (isLoading) return <div className="h-16 animate-pulse rounded-lg bg-stone-100" />;
+  if (isLoading) return <div className="h-16 animate-pulse rounded-lg bg-neutro-100" />;
   const doc = data?.documento;
   const imagenes = doc?.archivos.filter((a) => a.tipo.startsWith("image/")) ?? [];
   const otros = doc?.archivos.filter((a) => !a.tipo.startsWith("image/")) ?? [];
 
   return (
-    <div className={`rounded-lg border border-stone-200 bg-stone-50/60 ${compacta ? "p-2" : "p-3"}`}>
+    <div className={`rounded-lg border border-neutro-200 bg-neutro-50/60 ${compacta ? "p-2" : "p-3"}`}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Integridad estado={data?.integridad} />
-        {doc && <span className="font-semibold text-stone-700">{CLASES[doc.clase] ?? doc.clase}</span>}
-        {doc && <span className="text-stone-500">{new Date(doc.fecha).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}</span>}
+        {doc && <span className="font-semibold text-neutro-700">{CLASES[doc.clase] ?? doc.clase}</span>}
+        {doc && <span className="text-neutro-500">{new Date(doc.fecha).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}</span>}
         {doc?.ubicacion && (
-          <a className="text-teal-700 hover:underline" href={enlaceMapa(doc.ubicacion)} target="_blank" rel="noreferrer">
+          <a className="text-marca-700 hover:underline" href={enlaceMapa(doc.ubicacion)} target="_blank" rel="noreferrer">
             📍 {doc.ubicacion.lugar ?? `${doc.ubicacion.lat}, ${doc.ubicacion.lng}`}
           </a>
         )}
       </div>
-      {doc?.titulo && !compacta && <p className="mt-1 text-sm font-medium text-stone-800">{doc.titulo}</p>}
-      {doc?.nota && <p className="mt-0.5 text-sm text-stone-600">{doc.nota}</p>}
+      {doc?.titulo && !compacta && <p className="mt-1 text-sm font-medium text-neutro-800">{doc.titulo}</p>}
+      {doc?.nota && <p className="mt-0.5 text-sm text-neutro-600">{doc.nota}</p>}
       {imagenes.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {imagenes.map((a, i) => (
-            <button key={`${a.uri}-${i}`} type="button" onClick={() => setAmpliada(urlIpfs(a.uri)!)} className="overflow-hidden rounded-lg border border-stone-200 bg-white" title="Ver en grande">
+            <button key={`${a.uri}-${i}`} type="button" onClick={() => setAmpliada(urlIpfs(a.uri)!)} className="overflow-hidden rounded-lg border border-neutro-200 bg-white" title="Ver en grande">
               <img src={urlIpfs(a.uri)} alt={a.nombre} loading="lazy" className={`${compacta ? "h-16 w-24" : "h-28 w-40"} object-cover`} />
             </button>
           ))}
         </div>
       )}
       {otros.map((a, i) => (
-        <a key={`${a.uri}-${i}`} className="mt-1 block text-xs text-teal-700 hover:underline" href={urlIpfs(a.uri)} target="_blank" rel="noreferrer">
+        <a key={`${a.uri}-${i}`} className="mt-1 block text-xs text-marca-700 hover:underline" href={urlIpfs(a.uri)} target="_blank" rel="noreferrer">
           📄 {a.nombre}
         </a>
       ))}
       {!compacta && (
-        <p className="mt-2 break-all font-mono text-[10px] text-stone-400">
+        <p className="mt-2 break-all font-mono text-[10px] text-neutro-400">
           <a className="hover:underline" href={urlIpfs(uri)} target="_blank" rel="noreferrer">
             {uri}
           </a>
@@ -231,15 +231,15 @@ export function VerEvidencia({ uri, hash, compacta = false }: { uri?: string; ha
 function Integridad({ estado }: { estado?: string }) {
   if (estado === "verificada")
     return (
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800" title="El documento coincide byte a byte con el hash guardado en el contrato">
+      <span className="rounded-full bg-exito-100 px-2 py-0.5 font-semibold text-exito-800" title="El documento coincide byte a byte con el hash guardado en el contrato">
         ✓ Íntegra
       </span>
     );
   if (estado === "alterada")
     return (
-      <span className="rounded-full bg-rose-600 px-2 py-0.5 font-semibold text-white" title="El documento NO coincide con el hash del contrato">
+      <span className="rounded-full bg-peligro-600 px-2 py-0.5 font-semibold text-white" title="El documento NO coincide con el hash del contrato">
         ✕ No coincide con la cadena
       </span>
     );
-  return <span className="rounded-full bg-stone-200 px-2 py-0.5 font-semibold text-stone-600">Documento no disponible</span>;
+  return <span className="rounded-full bg-neutro-200 px-2 py-0.5 font-semibold text-neutro-600">Documento no disponible</span>;
 }

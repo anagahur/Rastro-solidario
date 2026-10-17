@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_RECIBO_ADDRESS?: string;
   readonly VITE_FACTORY_ADDRESS?: string;
   readonly VITE_BLOQUE_DESPLIEGUE?: string;
+  readonly VITE_IPFS_GATEWAY?: string;
 }
 
 interface ImportMeta {

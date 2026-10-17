@@ -3,6 +3,7 @@
 // comprobar que el documento es exactamente el que se registró.
 import { useQuery } from "@tanstack/react-query";
 import { keccak256, type Hex } from "viem";
+import { IPFS_GATEWAY } from "../config";
 
 export interface Ubicacion {
   lat: number;
@@ -44,10 +45,14 @@ export interface Subida {
 const CERO32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 export const hayHash = (h?: string) => !!h && h !== CERO32;
 
-/** ipfs://bafy... → /ipfs/bafy... (el servidor de la app lo sirve o redirige a un gateway). */
+/**
+ * ipfs://bafy... → URL para leerlo.
+ * Con VITE_IPFS_GATEWAY (producción, evidencias fijadas en Pinata) se lee directo de IPFS y no
+ * depende del servidor de la app; sin él, /ipfs/bafy... (el servidor lo sirve o redirige a un gateway).
+ */
 export function urlIpfs(uri?: string): string | undefined {
   if (!uri) return undefined;
-  if (uri.startsWith("ipfs://")) return `/ipfs/${uri.slice(7)}`;
+  if (uri.startsWith("ipfs://")) return `${IPFS_GATEWAY || "/ipfs/"}${uri.slice(7)}`;
   if (uri.startsWith("http")) return uri;
   return undefined;
 }

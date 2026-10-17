@@ -25,6 +25,12 @@ export const RPC_URL: string = (() => {
 export const EXPLORER_URL: string =
   env.VITE_EXPLORER_URL || (CHAIN_ID === 10143 ? "https://testnet.monadvision.com" : "");
 export const ES_MONAD = CHAIN_ID === 10143;
+/**
+ * Gateway IPFS para leer las evidencias directo de IPFS (p. ej. el dedicado de Pinata,
+ * https://<tu-gateway>.mypinata.cloud/ipfs/). Vacío = las sirve el servidor de la app en /ipfs/.
+ */
+const GATEWAY: string = env.VITE_IPFS_GATEWAY || "";
+export const IPFS_GATEWAY = GATEWAY && !GATEWAY.endsWith("/") ? `${GATEWAY}/` : GATEWAY;
 /** Usuario del bot de Telegram para avisos (opcional; ver scripts/notificador.mjs). */
 export const BOT_TELEGRAM: string = env.VITE_TELEGRAM_BOT || "";
 

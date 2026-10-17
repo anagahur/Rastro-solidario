@@ -22,7 +22,7 @@ export function VistaPanel({ campana, onCampanaCreada }: { campana?: Address; on
     return (
       <Vacio>
         Conecta tu wallet para ver las acciones de tu rol (fundación, verificador, empresa aliada o administrador). Para seguir una campaña sin wallet usa la{" "}
-        <a className="font-semibold text-teal-700 underline" href={campana ? `#/campana/${campana}` : "#/donar"}>
+        <a className="font-semibold text-marca-700 underline" href={campana ? `#/campana/${campana}` : "#/donar"}>
           página pública
         </a>
         .
@@ -37,13 +37,13 @@ export function VistaPanel({ campana, onCampanaCreada }: { campana?: Address; on
   return (
     <div className="space-y-6">
       <section className="tarjeta flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-stone-500">Tus roles:</span>
+        <span className="text-neutro-500">Tus roles:</span>
         {roles.admin && <Insignia texto="Administrador del registro" />}
         {roles.fundacion && <Insignia texto="Fundación" />}
         {roles.verificador && <Insignia texto="Verificador" />}
         {roles.proveedor && <Insignia texto="Proveedor" />}
         {roles.empresa && <Insignia texto="Empresa aliada" />}
-        {sinRol && <span className="text-stone-500">ninguno. Puedes donar, rastrear y activar reembolsos vencidos.</span>}
+        {sinRol && <span className="text-neutro-500">ninguno. Puedes donar, rastrear y activar reembolsos vencidos.</span>}
       </section>
 
       {campana && info && (
@@ -57,7 +57,7 @@ export function VistaPanel({ campana, onCampanaCreada }: { campana?: Address; on
             {soyVerificadorDeCampana && <CensoBeneficiarios campana={campana} />}
             {roles.empresa && <AccionesEmpresa campana={campana} />}
             {roles.fundacion && !soyFundacionDeCampana && (
-              <p className="rounded-xl bg-stone-100 p-3 text-sm text-stone-600">Esta campaña pertenece a otra fundación.</p>
+              <p className="rounded-xl bg-neutro-100 p-3 text-sm text-neutro-600">Esta campaña pertenece a otra fundación.</p>
             )}
             <AccionesPublicas campana={campana} />
           </div>
@@ -98,8 +98,8 @@ function AccionesFundacion({ campana }: { campana: Address }) {
     <Seccion titulo="Acciones de la fundación" descripcion="Tú propones cómo se gasta el dinero, pero nunca lo recibes: el pago va del contrato al proveedor.">
       <div className="space-y-5">
         {info.estado === 0 && (
-          <div className="rounded-xl bg-stone-50 p-4">
-            <p className="text-sm text-stone-600">
+          <div className="rounded-xl bg-neutro-50 p-4">
+            <p className="text-sm text-neutro-600">
               Recaudado {pesos(info.totalRecaudado)} de {pesos(info.meta)}. Al cerrar el recaudo se fijan los montos de cada etapa, el matching que no se usó vuelve a las empresas y
               empieza a correr el plazo de la primera etapa.
             </p>
@@ -115,7 +115,7 @@ function AccionesFundacion({ campana }: { campana: Address }) {
 
         {puedeProponer && (
           <form
-            className="space-y-3 rounded-xl bg-stone-50 p-4"
+            className="space-y-3 rounded-xl bg-neutro-50 p-4"
             onSubmit={(e) => {
               e.preventDefault();
               if (!evidencia || !esDireccion(proveedor) || faltanUnidades) return;
@@ -128,11 +128,11 @@ function AccionesFundacion({ campana }: { campana: Address }) {
               });
             }}
           >
-            <p className="font-semibold text-stone-900">
+            <p className="font-semibold text-neutro-900">
               Proponer etapa {idx + 1}: {etapa.descripcion} · {pesos(etapa.monto)} MockCOP
             </p>
             {faltaCenso && (
-              <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+              <p className="rounded-lg bg-alerta-50 p-2 text-xs text-alerta-900">
                 Esta campaña exige confirmación de la comunidad: primero un verificador (p. ej. la Junta de Acción Comunal) debe registrar el censo de familias.
               </p>
             )}
@@ -160,7 +160,7 @@ function AccionesFundacion({ campana }: { campana: Address }) {
               <input className="campo" inputMode="numeric" value={unidades} onChange={(e) => setUnidades(e.target.value.replace(/\D/g, ""))} placeholder="20" />
             </label>
             {precio && (
-              <p className={`rounded-lg p-2 text-sm ${precio.sobrecosto ? "bg-rose-600 text-white" : "bg-emerald-50 text-emerald-900"}`}>
+              <p className={`rounded-lg p-2 text-sm ${precio.sobrecosto ? "bg-peligro-600 text-white" : "bg-exito-50 text-exito-900"}`}>
                 Precio por unidad: <strong>${pesos(precio.unitario)}</strong> vs. referencia ${pesos(etapa.precioReferencia)} ({precio.diferencia >= 0 ? "+" : ""}
                 {precio.diferencia.toFixed(0)} %).{" "}
                 {precio.sobrecosto
@@ -183,14 +183,14 @@ function AccionesFundacion({ campana }: { campana: Address }) {
           </form>
         )}
 
-        {info.estado === 1 && etapa?.estado === 1 && <p className="text-sm text-stone-600">La etapa {idx + 1} espera la confirmación de los verificadores y de la comunidad.</p>}
+        {info.estado === 1 && etapa?.estado === 1 && <p className="text-sm text-neutro-600">La etapa {idx + 1} espera la confirmación de los verificadores y de la comunidad.</p>}
         {info.estado === 1 && etapa?.estado === 2 && (
-          <p className="text-sm text-violet-700">Los verificadores ya aprobaron la etapa {idx + 1}: el pago saldrá cuando confirmen las familias.</p>
+          <p className="text-sm text-comunidad-700">Los verificadores ya aprobaron la etapa {idx + 1}: el pago saldrá cuando confirmen las familias.</p>
         )}
-        {info.estado === 2 && <p className="text-sm text-emerald-700">Campaña finalizada: todas las etapas se pagaron.</p>}
+        {info.estado === 2 && <p className="text-sm text-exito-700">Campaña finalizada: todas las etapas se pagaron.</p>}
 
         {(info.estado === 0 || info.estado === 1) && (
-          <div className="border-t border-stone-200 pt-4">
+          <div className="border-t border-neutro-200 pt-4">
             <button
               className="btn-peligro"
               disabled={!!pendiente}
@@ -316,7 +316,7 @@ function CrearCampana({ onCreada }: { onCreada: (a: Address) => void }) {
           <span className="etiqueta">Etapas (suma: {suma} %)</span>
           <div className="space-y-2">
             {etapas.map((et, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-stone-200 p-2 sm:grid-cols-[1.4fr_70px_80px_1fr_1.2fr_auto]">
+              <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-neutro-200 p-2 sm:grid-cols-[1.4fr_70px_80px_1fr_1.2fr_auto]">
                 <input className="campo col-span-2 sm:col-span-1" value={et.descripcion} onChange={(e) => editar(i, "descripcion", e.target.value)} aria-label="Descripción" placeholder="Descripción" />
                 <input className="campo" value={et.porcentaje} onChange={(e) => editar(i, "porcentaje", e.target.value)} aria-label="Porcentaje" title="%" placeholder="%" />
                 <input className="campo" value={et.plazoDias} onChange={(e) => editar(i, "plazoDias", e.target.value)} aria-label="Plazo en días" title="días de plazo" placeholder="días" />
@@ -328,7 +328,7 @@ function CrearCampana({ onCreada }: { onCreada: (a: Address) => void }) {
               </div>
             ))}
           </div>
-          <p className="mt-1 text-[11px] text-stone-400">
+          <p className="mt-1 text-[11px] text-neutro-400">
             Columnas: descripción · % · días de plazo · precio de referencia por unidad (opcional, p. ej. SIPSA-DANE) · unidad. Si la factura supera la referencia en más del 10 %, se marca
             sobrecosto y se exige un verificador más.
           </p>
@@ -341,7 +341,7 @@ function CrearCampana({ onCreada }: { onCreada: (a: Address) => void }) {
           <span className="etiqueta">Verificadores independientes</span>
           <div className="grid gap-2 sm:grid-cols-2">
             {verificadores.map((v) => (
-              <label key={v.cuenta} className="flex items-center gap-2 rounded-lg border border-stone-200 p-2 text-sm">
+              <label key={v.cuenta} className="flex items-center gap-2 rounded-lg border border-neutro-200 p-2 text-sm">
                 <input
                   type="checkbox"
                   checked={elegidos.includes(v.cuenta)}
@@ -373,8 +373,8 @@ function CrearCampana({ onCreada }: { onCreada: (a: Address) => void }) {
             Cancelar
           </button>
         </div>
-        {suma !== 100 && <p className="text-sm text-rose-700 md:col-span-2">Los porcentajes deben sumar 100 %.</p>}
-        {!refsValidas && <p className="text-sm text-rose-700 md:col-span-2">Cada precio de referencia necesita su unidad.</p>}
+        {suma !== 100 && <p className="text-sm text-peligro-700 md:col-span-2">Los porcentajes deben sumar 100 %.</p>}
+        {!refsValidas && <p className="text-sm text-peligro-700 md:col-span-2">Cada precio de referencia necesita su unidad.</p>}
       </form>
     </Seccion>
   );
@@ -415,15 +415,15 @@ function AccionesVerificador({ campana }: { campana: Address }) {
         <Vacio>Ya votaste en la etapa {idx + 1} ({miVoto === 1 ? "confirmaste" : "rechazaste"}).</Vacio>
       ) : (
         <div className="space-y-4">
-          <div className={`rounded-xl p-4 text-sm ${etapa.sobrecosto ? "bg-rose-50" : "bg-amber-50"}`}>
-            <p className="font-semibold text-stone-900">
+          <div className={`rounded-xl p-4 text-sm ${etapa.sobrecosto ? "bg-peligro-50" : "bg-alerta-50"}`}>
+            <p className="font-semibold text-neutro-900">
               Etapa {idx + 1}: {etapa.descripcion} · {pesos(etapa.monto)} MockCOP
             </p>
             <p className="mt-1">
               Proveedor: <Direccion valor={etapa.proveedor} nombre={nombre(etapa.proveedor)} />
             </p>
             {etapa.sobrecosto && (
-              <p className="mt-2 font-semibold text-rose-700">
+              <p className="mt-2 font-semibold text-peligro-700">
                 ⚠ Sobrecosto: esta etapa exige {etapa.confirmacionesRequeridas} confirmaciones. Revisa la factura con cuidado y deja constancia en tu acta.
               </p>
             )}
@@ -439,7 +439,7 @@ function AccionesVerificador({ campana }: { campana: Address }) {
           />
           {pideConteo && (
             <label className="block text-sm">
-              <span className="font-medium text-stone-800">¿Cuántas unidades ({unidad}) contaste en el sitio? · obligatorio</span>
+              <span className="font-medium text-neutro-800">¿Cuántas unidades ({unidad}) contaste en el sitio? · obligatorio</span>
               <input
                 className="campo mt-1 w-40"
                 type="number"
@@ -450,7 +450,7 @@ function AccionesVerificador({ campana }: { campana: Address }) {
                 placeholder="Cuenta en campo"
               />
               {nContadas > 0 && (
-                <span className={`mt-1 block ${faltan > 0 ? "font-semibold text-rose-700" : "text-emerald-700"}`}>
+                <span className={`mt-1 block ${faltan > 0 ? "font-semibold text-peligro-700" : "text-exito-700"}`}>
                   {faltan > 0
                     ? `Faltan ${faltan} de ${etapa.unidades} facturadas: el contrato registrará tu voto como rechazo.`
                     : `✓ Cuadra con la factura (${etapa.unidades}).`}
@@ -527,19 +527,19 @@ function CensoBeneficiarios({ campana }: { campana: Address }) {
     >
       <div className="space-y-3 text-sm">
         <p>
-          <strong className="text-2xl text-violet-800">{info.numeroBeneficiarios.toString()}</strong> familias en el censo
+          <strong className="text-2xl text-comunidad-800">{info.numeroBeneficiarios.toString()}</strong> familias en el censo
           {info.quorumBeneficiariosBps > 0 ? ` · cada etapa necesita que confirme el ${info.quorumBeneficiariosBps / 100} %` : " · esta campaña no exige confirmación comunitaria"}
         </p>
         {etapa && etapa.beneficiariosRequeridos > 0 && (etapa.estado === 1 || etapa.estado === 2) && (
           <div>
-            <p className="text-stone-600">
+            <p className="text-neutro-600">
               Etapa actual: {etapa.confirmacionesBeneficiarios} de {etapa.beneficiariosRequeridos} confirmaciones necesarias
             </p>
-            <Barra valor={porcentaje(BigInt(etapa.confirmacionesBeneficiarios), BigInt(Math.max(1, etapa.beneficiariosRequeridos)))} className="bg-violet-600" />
+            <Barra valor={porcentaje(BigInt(etapa.confirmacionesBeneficiarios), BigInt(Math.max(1, etapa.beneficiariosRequeridos)))} className="bg-comunidad-600" />
           </div>
         )}
         {abierta && (
-          <div className="flex flex-wrap items-end gap-2 rounded-xl bg-violet-50 p-3">
+          <div className="flex flex-wrap items-end gap-2 rounded-xl bg-comunidad-50 p-3">
             <label>
               <span className="etiqueta">Familias a registrar</span>
               <input className="campo w-24" inputMode="numeric" value={cantidad} onChange={(e) => setCantidad(e.target.value.replace(/\D/g, ""))} />
@@ -551,7 +551,7 @@ function CensoBeneficiarios({ campana }: { campana: Address }) {
             <button className="btn-primario" disabled={!!pendiente} onClick={registrar}>
               Generar {n} tarjetas y registrar
             </button>
-            <p className="w-full text-[11px] text-violet-900/70">
+            <p className="w-full text-[11px] text-comunidad-900/70">
               Las llaves se crean en este navegador y solo quedan en las tarjetas: la cadena guarda únicamente la dirección pública de cada familia. En producción el censo se cruza con el
               Registro Único de Damnificados (RUD).
             </p>
@@ -596,8 +596,8 @@ function AccionesEmpresa({ campana }: { campana: Address }) {
           <p>
             Comprometiste {pesos(mio.tope)} MockCOP ({mio.proporcionBps / 100} % de cada donación). Usado: <strong>{pesos(mio.usado)}</strong>.
           </p>
-          <Barra valor={porcentaje(mio.usado, mio.tope)} className="bg-amber-500" />
-          <p className="text-xs text-stone-500">Lo usado cuenta como tu aporte: si la campaña entra en reembolso, recuperas tu parte como cualquier donante.</p>
+          <Barra valor={porcentaje(mio.usado, mio.tope)} className="bg-alerta-500" />
+          <p className="text-xs text-neutro-500">Lo usado cuenta como tu aporte: si la campaña entra en reembolso, recuperas tu parte como cualquier donante.</p>
         </div>
       ) : info.estado !== 0 ? (
         <Vacio>La campaña ya no recauda: el matching solo se puede comprometer mientras recibe donaciones.</Vacio>
@@ -609,7 +609,7 @@ function AccionesEmpresa({ campana }: { campana: Address }) {
               [10_000, "Duplica"],
               [20_000, "Triplica"],
             ].map(([bps, t]) => (
-              <label key={bps} className={`cursor-pointer rounded-xl border p-2 text-center font-semibold ${proporcion === bps ? "border-amber-500 bg-amber-50" : "border-stone-200"}`}>
+              <label key={bps} className={`cursor-pointer rounded-xl border p-2 text-center font-semibold ${proporcion === bps ? "border-alerta-500 bg-alerta-50" : "border-neutro-200"}`}>
                 <input type="radio" className="sr-only" checked={proporcion === bps} onChange={() => setProporcion(bps as number)} />
                 {t}
               </label>
@@ -619,7 +619,7 @@ function AccionesEmpresa({ campana }: { campana: Address }) {
             <span className="etiqueta">Tope (MockCOP) · máximo {pesos(restante)}</span>
             <input className="campo" inputMode="numeric" value={tope} onChange={(e) => setTope(e.target.value.replace(/\D/g, ""))} />
           </label>
-          {saldo !== undefined && saldo < wei && <p className="rounded-lg bg-rose-50 p-2 text-xs text-rose-800">Tu saldo ({pesos(saldo)}) no alcanza.</p>}
+          {saldo !== undefined && saldo < wei && <p className="rounded-lg bg-peligro-50 p-2 text-xs text-peligro-800">Tu saldo ({pesos(saldo)}) no alcanza.</p>}
           <button className="btn-primario w-full" disabled={!!pendiente || wei === 0n || wei > restante} onClick={comprometer}>
             Bloquear {pesos(wei)} y activar matching
           </button>
@@ -705,7 +705,7 @@ function AdminRegistro() {
           Registrar
         </button>
       </form>
-      {cuenta && !esDireccion(cuenta) && <p className="mt-1 text-xs text-rose-700">Dirección inválida.</p>}
+      {cuenta && !esDireccion(cuenta) && <p className="mt-1 text-xs text-peligro-700">Dirección inválida.</p>}
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {listas.map((l) => (
@@ -713,10 +713,10 @@ function AdminRegistro() {
             <h3 className="etiqueta">{l.titulo}</h3>
             <ul className="space-y-2">
               {l.items.map((a) => (
-                <li key={a.cuenta} className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 p-2 text-sm">
+                <li key={a.cuenta} className="flex items-center justify-between gap-2 rounded-lg border border-neutro-200 p-2 text-sm">
                   <Direccion valor={a.cuenta} nombre={a.nombre} />
                   <button
-                    className="text-xs font-medium text-rose-700 hover:underline disabled:opacity-50"
+                    className="text-xs font-medium text-peligro-700 hover:underline disabled:opacity-50"
                     disabled={!!pendiente}
                     onClick={() => {
                       if (confirm(`¿Revocar a ${a.nombre}?`)) ejecutar({ ...reg, functionName: "revocarActor", args: [l.rol!, a.cuenta], etiqueta: "Revocar actor" });
@@ -726,7 +726,7 @@ function AdminRegistro() {
                   </button>
                 </li>
               ))}
-              {l.items.length === 0 && <li className="text-sm text-stone-400">—</li>}
+              {l.items.length === 0 && <li className="text-sm text-neutro-400">—</li>}
             </ul>
           </div>
         ))}

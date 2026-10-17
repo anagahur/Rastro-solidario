@@ -53,7 +53,7 @@ function Confirmar({ campana, cuenta }: { campana: Address; cuenta: ReturnType<t
   if (!info || !etapas || esBeneficiario === undefined) {
     return (
       <Marco>
-        <div className="h-40 animate-pulse rounded-2xl bg-stone-200" />
+        <div className="h-40 animate-pulse rounded-2xl bg-neutro-200" />
       </Marco>
     );
   }
@@ -67,13 +67,13 @@ function Confirmar({ campana, cuenta }: { campana: Address; cuenta: ReturnType<t
     return (
       <Marco titulo={info.nombre}>
         <div className="space-y-4">
-          <div className="rounded-2xl bg-emerald-600 p-6 text-center text-white">
+          <div className="rounded-2xl bg-exito-600 p-6 text-center text-white">
             <p className="text-5xl">✓</p>
             <p className="mt-2 text-xl font-bold">¡Gracias! Tu confirmación quedó registrada</p>
-            <p className="mt-1 text-sm text-emerald-50">Entrega: {confirmada.descripcion}. Nadie la puede borrar ni cambiar.</p>
+            <p className="mt-1 text-sm text-exito-50">Entrega: {confirmada.descripcion}. Nadie la puede borrar ni cambiar.</p>
           </div>
           {confirmada.pago && (
-            <p className="rounded-2xl bg-violet-50 p-4 text-center text-sm text-violet-900">
+            <p className="rounded-2xl bg-comunidad-50 p-4 text-center text-sm text-comunidad-900">
               Con tu voz se completaron las confirmaciones de la comunidad: el pago al proveedor salió en este mismo momento.
             </p>
           )}
@@ -118,38 +118,42 @@ function Confirmar({ campana, cuenta }: { campana: Address; cuenta: ReturnType<t
   return (
     <Marco titulo={info.nombre}>
       <div className="space-y-5">
-        <div className="rounded-2xl bg-teal-50 p-5">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Entrega {Number(idx) + 1}</p>
-          <p className="mt-1 text-2xl font-bold text-stone-900">{etapa.descripcion}</p>
-          <p className="mt-2 text-stone-700">
+        <div className="rounded-2xl bg-marca-50 p-5 ring-1 ring-inset ring-marca-100">
+          <p className="rotulo text-marca-700">Entrega {Number(idx) + 1}</p>
+          <p className="mt-1 font-display text-3xl font-extrabold text-neutro-900">{etapa.descripcion}</p>
+          <p className="mt-2 text-neutro-700">
             {etapa.unidades > 0 && etapa.unidad ? `${etapa.unidades} × ${etapa.unidad}` : `${pesos(etapa.monto)} pesos en ayuda`}
             {nombre(etapa.proveedor) ? ` de ${nombre(etapa.proveedor)}` : ""}
           </p>
         </div>
 
         {lista ? (
-          <div className="rounded-2xl bg-emerald-600 p-6 text-center text-white">
+          <div className="rounded-2xl bg-exito-600 p-6 text-center text-white">
             <p className="text-5xl">✓</p>
             <p className="mt-2 text-xl font-bold">¡Gracias! Tu confirmación quedó registrada</p>
-            <p className="mt-1 text-sm text-emerald-50">Nadie la puede borrar ni cambiar. Sin tu voz y la de tus vecinos, el pago no sale.</p>
+            <p className="mt-1 text-sm text-exito-50">Nadie la puede borrar ni cambiar. Sin tu voz y la de tus vecinos, el pago no sale.</p>
           </div>
         ) : (
           <>
-            <p className="text-center text-lg text-stone-800">¿Tu familia ya recibió esta ayuda?</p>
-            <button className="w-full rounded-2xl bg-teal-700 px-6 py-5 text-xl font-bold text-white shadow-lg active:scale-[0.99] disabled:opacity-60" disabled={estado === "enviando"} onClick={confirmar}>
+            <p className="text-center font-display text-xl font-bold text-neutro-900">¿Tu familia ya recibió esta ayuda?</p>
+            <button
+              className="w-full rounded-2xl bg-marca-700 px-6 py-6 font-display text-2xl font-extrabold text-white shadow-boton transition hover:bg-marca-800 active:scale-[0.98] disabled:opacity-60"
+              disabled={estado === "enviando"}
+              onClick={confirmar}
+            >
               {estado === "enviando" ? "Registrando…" : "Sí, la recibí"}
             </button>
-            <p className="text-center text-sm text-stone-500">Si no la recibiste, no confirmes y avísale a la Personería. No tiene ningún costo para ti.</p>
+            <p className="text-center text-sm text-neutro-500">Si no la recibiste, no confirmes y avísale a la Personería. No tiene ningún costo para ti.</p>
           </>
         )}
-        {error && <p className="rounded-xl bg-rose-50 p-3 text-center text-sm text-rose-800">{error}</p>}
+        {error && <p className="rounded-xl bg-peligro-50 p-3 text-center text-sm text-peligro-800">{error}</p>}
 
-        <div className="rounded-2xl border border-stone-200 p-4">
-          <p className="text-sm text-stone-600">
-            <strong className="text-violet-800">{confirmaron}</strong> de {info.numeroBeneficiarios.toString()} familias han confirmado
+        <div className="rounded-2xl bg-comunidad-50/60 p-4 ring-1 ring-inset ring-comunidad-100">
+          <p className="mb-2 text-sm text-neutro-600">
+            <strong className="text-comunidad-800">{confirmaron}</strong> de {info.numeroBeneficiarios.toString()} familias han confirmado
             {requeridas > confirmaron ? ` · se necesitan ${requeridas} para liberar el pago` : " · ya hay suficientes confirmaciones"}
           </p>
-          <Barra valor={info.numeroBeneficiarios > 0n ? (confirmaron / Number(info.numeroBeneficiarios)) * 100 : 0} className="bg-violet-600" />
+          <Barra valor={info.numeroBeneficiarios > 0n ? (confirmaron / Number(info.numeroBeneficiarios)) * 100 : 0} className="bg-comunidad-600" />
         </div>
       </div>
     </Marco>
@@ -158,15 +162,19 @@ function Confirmar({ campana, cuenta }: { campana: Address; cuenta: ReturnType<t
 
 function Marco({ titulo, children }: { titulo?: string; children: React.ReactNode }) {
   return (
-    <div className="mx-auto min-h-screen max-w-md px-4 py-6">
-      <div className="mb-5 flex items-center gap-2">
-        <img src="/favicon.svg" alt="" className="h-9 w-9" />
-        <div>
-          <p className="font-bold leading-tight text-stone-900">Rastro Solidario</p>
-          <p className="text-xs text-stone-500">{titulo ?? "Confirmación de entrega"}</p>
+    <div className="min-h-screen bg-neutro-50">
+      <div className="bg-gradient-to-br from-marca-700 via-marca-800 to-marca-950 px-4 pb-16 pt-6 text-white">
+        <div className="mx-auto flex max-w-md items-center gap-3">
+          <img src="/favicon.svg" alt="" className="h-11 w-11 rounded-xl ring-2 ring-white/20" />
+          <div className="min-w-0">
+            <p className="font-display text-lg font-extrabold leading-tight">Rastro Solidario</p>
+            <p className="truncate text-sm text-marca-50/75">{titulo ?? "Confirmación de entrega"}</p>
+          </div>
         </div>
       </div>
-      <div className="text-stone-700">{children}</div>
+      <div className="mx-auto -mt-10 max-w-md px-4 pb-8">
+        <div className="rounded-3xl border border-neutro-200/80 bg-white p-5 text-[15px] leading-relaxed text-neutro-700 shadow-elevada">{children}</div>
+      </div>
     </div>
   );
 }

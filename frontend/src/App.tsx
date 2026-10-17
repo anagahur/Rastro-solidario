@@ -63,27 +63,37 @@ function Principal({ ruta }: { ruta: string[] }) {
   }, [ruta]);
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-stone-200 bg-white print:hidden">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <a href="#/donar" className="flex items-center gap-2.5">
-            <img src="/favicon.svg" alt="" className="h-9 w-9" />
-            <div>
-              <p className="text-lg font-bold leading-tight text-stone-900">Rastro Solidario</p>
-              <p className="text-xs text-stone-500">Cada peso, verificado por la comunidad · {appChain.name}</p>
+    <div className="relative isolate min-h-screen">
+      {/* Halo de marca detrás de la parte alta de la página */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[460px] bg-gradient-to-b from-marca-100/70 via-marca-50/40 to-transparent print:hidden" />
+
+      <header className="sticky top-0 z-30 border-b border-neutro-200/70 bg-white/80 backdrop-blur-md print:hidden">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="#/donar" className="flex min-w-0 items-center gap-3">
+            <img src="/favicon.svg" alt="" className="h-10 w-10 shrink-0 rounded-xl shadow-boton" />
+            <div className="min-w-0">
+              <p className="font-display text-[17px] font-extrabold leading-tight tracking-tight text-neutro-900">Rastro Solidario</p>
+              <p className="flex items-center gap-1.5 truncate text-xs text-neutro-500">
+                <span className="hidden sm:inline">Cada peso, verificado por la comunidad</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-neutro-100 px-2 py-0.5 font-medium text-neutro-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-exito-500" />
+                  {appChain.name}
+                </span>
+              </p>
             </div>
           </a>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <CampanaAvisos />
             <Billetera />
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4" aria-label="Secciones">
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none]" aria-label="Secciones">
           {PESTANAS.map((p) => (
             <a
               key={p.ruta}
               href={`#/${p.ruta}${CON_CAMPANA.has(p.ruta) && campana ? `/${campana}` : ""}`}
-              className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-semibold ${vista === p.ruta ? "border-teal-700 text-teal-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
+              aria-current={vista === p.ruta ? "page" : undefined}
+              className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${vista === p.ruta ? "bg-marca-700 text-white shadow-boton" : "text-neutro-500 hover:bg-neutro-100 hover:text-neutro-800"}`}
             >
               {p.texto}
             </a>
@@ -91,7 +101,7 @@ function Principal({ ruta }: { ruta: string[] }) {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 print:max-w-none print:p-0">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:py-8 print:max-w-none print:p-0">
         {!CONFIGURADO ? (
           <Aviso>
             Faltan las direcciones de los contratos en <code>frontend/.env</code>. Despliega con <code>pnpm deploy:local</code> o <code>pnpm deploy:monad</code>.
@@ -104,8 +114,8 @@ function Principal({ ruta }: { ruta: string[] }) {
 
         {vista !== "reputacion" && vista !== "tarjetas" && (
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="w-full sm:max-w-lg">
-              {cargando ? <div className="h-16 animate-pulse rounded-xl bg-stone-200" /> : <SelectorCampana campanas={campanas} seleccionada={campana} onCambiar={elegir} />}
+            <div className="w-full sm:max-w-xl">
+              {cargando ? <div className="h-[68px] animate-pulse rounded-xl bg-neutro-200/70" /> : <SelectorCampana campanas={campanas} seleccionada={campana} onCambiar={elegir} />}
             </div>
             <SaldoYFaucet />
           </div>
@@ -126,14 +136,22 @@ function Principal({ ruta }: { ruta: string[] }) {
         )}
       </main>
 
-      <footer className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-xs text-stone-400 print:hidden">
-        Proyecto académico. MockCOP no tiene valor real y la pasarela Nequi/PSE es simulada. La cadena garantiza que el dinero se mueve según las reglas; que la entrega ocurrió lo
-        atestiguan verificadores independientes con evidencia pública y las propias familias damnificadas.
+      <footer className="mt-6 border-t border-neutro-200/80 print:hidden">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-xs leading-relaxed text-neutro-500 sm:flex-row sm:items-start sm:gap-6">
+          <p className="flex shrink-0 items-center gap-2 font-display text-sm font-bold text-neutro-700">
+            <img src="/favicon.svg" alt="" className="h-6 w-6 rounded-md" />
+            Rastro Solidario
+          </p>
+          <p className="max-w-3xl">
+            Proyecto académico. MockCOP no tiene valor real y la pasarela Nequi/PSE es simulada. La cadena garantiza que el dinero se mueve según las reglas; que la entrega ocurrió lo
+            atestiguan verificadores independientes con evidencia pública y las propias familias damnificadas.
+          </p>
+        </div>
       </footer>
     </div>
   );
 }
 
 function Aviso({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{children}</div>;
+  return <div className="nota-alerta p-4">{children}</div>;
 }

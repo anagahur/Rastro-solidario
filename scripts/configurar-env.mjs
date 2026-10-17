@@ -20,6 +20,8 @@ parcharEnv(path.join(RAIZ, "frontend", ".env"), {
   VITE_REPUTACION_ADDRESS: r.HistorialReputacion,
   VITE_REENVIADOR_ADDRESS: r.ReenviadorGas,
   VITE_BLOQUE_DESPLIEGUE: String(r.bloqueDespliegue ?? 0),
+  // Con Pinata, el navegador lee las evidencias directo de IPFS (ver pnpm pinata)
+  VITE_IPFS_GATEWAY: process.env.PINATA_JWT ? process.env.IPFS_GATEWAY || "" : "",
 });
 
 exportarAbis();

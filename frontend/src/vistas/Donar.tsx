@@ -6,6 +6,7 @@ import { campanaEmergenciaAbi, mockCOPAbi } from "../abis";
 import { CHAIN_ID, DIRECCIONES, ES_MONAD } from "../config";
 import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
+import { RespaldoPalabras } from "../componentes/Recuperacion";
 import { useBilleteraInvisible, donarSinCripto, type PasoDonacion } from "../lib/billeteraInvisible";
 import { useCampana, useNombres, useSaldoCop } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
@@ -21,7 +22,7 @@ export function VistaDonar({ campana }: { campana?: Address }) {
     return <Vacio>Aún no hay campañas. Crea una desde el Panel (como fundación) o ejecuta el script de simulación.</Vacio>;
   }
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+    <div className="grid gap-6 pb-20 lg:grid-cols-[1fr_400px] lg:pb-0">
       <div className="space-y-6">
         <ResumenCampana direccion={campana} />
         <Seccion
@@ -37,10 +38,37 @@ export function VistaDonar({ campana }: { campana?: Address }) {
         </Seccion>
       </div>
       <div className="space-y-6">
-        <CajaDonar campana={campana} />
+        <div id="caja-donar" className="scroll-mt-32">
+          <CajaDonar campana={campana} />
+        </div>
         <DonacionesRecientes campana={campana} />
         <PorQueMonad />
       </div>
+      <BotonDonarMovil campana={campana} />
+    </div>
+  );
+}
+
+/** En el celular la caja de donar queda debajo de las etapas: este botón fijo lleva hasta ella. */
+function BotonDonarMovil({ campana }: { campana: Address }) {
+  const { info } = useCampana(campana);
+  const [cajaVisible, setCajaVisible] = useState(false);
+  useEffect(() => {
+    const caja = document.getElementById("caja-donar");
+    if (!caja || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(([e]) => setCajaVisible(e.isIntersecting), { rootMargin: "0px 0px -30% 0px" });
+    obs.observe(caja);
+    return () => obs.disconnect();
+  }, []);
+  if (info?.estado !== 0 || cajaVisible) return null;
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-neutro-200/70 bg-white/90 p-3 backdrop-blur-md lg:hidden print:hidden">
+      <button
+        className="btn-primario w-full rounded-2xl py-3.5 text-base"
+        onClick={() => document.getElementById("caja-donar")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      >
+        Donar ahora <span aria-hidden>↓</span>
+      </button>
     </div>
   );
 }
@@ -74,44 +102,54 @@ function CajaDonar({ campana }: { campana: Address }) {
         <Vacio>{info ? "Esta campaña ya no recibe donaciones. Puedes seguir cómo se gasta en la página pública." : "Cargando…"}</Vacio>
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1 text-sm font-semibold">
-            <button className={`rounded-lg px-3 py-2 ${modo === "facil" ? "bg-white text-teal-800 shadow-sm" : "text-stone-500"}`} onClick={() => setModo("facil")}>
+          <div className="segmentado grid-cols-2" role="tablist" aria-label="Forma de pago">
+            <button role="tab" aria-selected={modo === "facil"} className={modo === "facil" ? "segmento-activo" : "segmento"} onClick={() => setModo("facil")}>
               Nequi o PSE
             </button>
-            <button className={`rounded-lg px-3 py-2 ${modo === "wallet" ? "bg-white text-teal-800 shadow-sm" : "text-stone-500"}`} onClick={() => setModo("wallet")}>
+            <button role="tab" aria-selected={modo === "wallet"} className={modo === "wallet" ? "segmento-activo" : "segmento"} onClick={() => setModo("wallet")}>
               Wallet cripto
             </button>
           </div>
 
           <div>
             <label className="etiqueta" htmlFor="monto">
-              ¿Cuánto quieres donar? (pesos)
+              ¿Cuánto quieres donar?
             </label>
-            <input
-              id="monto"
-              className="campo text-lg font-semibold"
-              inputMode="numeric"
-              value={pesosNum ? pesosNum.toLocaleString("es-CO") : ""}
-              onChange={(e) => setMonto(e.target.value)}
-              placeholder="20.000"
-            />
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-display text-xl font-bold text-neutro-400">$</span>
+              <input
+                id="monto"
+                className="campo py-3.5 pl-9 font-display text-2xl font-bold tabular"
+                inputMode="numeric"
+                value={pesosNum ? pesosNum.toLocaleString("es-CO") : ""}
+                onChange={(e) => setMonto(e.target.value)}
+                placeholder="20.000"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-neutro-400">COP</span>
+            </div>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
               {ATAJOS.map((a) => (
-                <button type="button" key={a} className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium hover:bg-stone-100" onClick={() => setMonto(String(a))}>
-                  {a.toLocaleString("es-CO")}
+                <button
+                  type="button"
+                  key={a}
+                  className={pesosNum === a ? "chip border-marca-600 bg-marca-600 text-white hover:border-marca-700 hover:bg-marca-700 hover:text-white" : "chip"}
+                  onClick={() => setMonto(String(a))}
+                >
+                  ${a.toLocaleString("es-CO")}
                 </button>
               ))}
             </div>
           </div>
 
           {extra > 0n && (
-            <p className="rounded-xl bg-gradient-to-r from-amber-100 to-orange-50 p-3 text-sm text-amber-950">
-              🎁 Con el matching de las empresas aliadas, tus {pesos(wei)} se convierten en <strong>{pesos(wei + extra)}</strong> para la emergencia.
+            <p className="nota-matching flex items-start gap-2">
+              <span aria-hidden className="text-base leading-5">🎁</span>
+              <span>
+                Con el matching de las empresas aliadas, tus {pesos(wei)} se convierten en <strong className="text-alerta-900">{pesos(wei + extra)}</strong> para la emergencia.
+              </span>
             </p>
           )}
-          {wei > restante && restante > 0n && (
-            <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Faltan {pesos(restante)} para la meta: solo se cobrará esa cantidad.</p>
-          )}
+          {wei > restante && restante > 0n && <p className="nota-alerta text-xs">Faltan {pesos(restante)} para la meta: solo se cobrará esa cantidad.</p>}
 
           {modo === "facil" ? <DonarFacil campana={campana} montoPesos={pesosNum} extra={extra} /> : <DonarConWallet campana={campana} wei={wei} restante={restante} pesosNum={pesosNum} />}
         </div>
@@ -164,10 +202,13 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
   if (fase === "listo" && resultado) {
     const enlace = `${window.location.origin}/#/rastreo/${campana}/${resultado.cuenta}`;
     return (
-      <div className="space-y-3 rounded-xl bg-emerald-50 p-4">
-        <p className="text-lg font-bold text-emerald-900">¡Gracias! Donaste {montoPesos.toLocaleString("es-CO")} pesos 💚</p>
-        {resultado.extra > 0n && <p className="text-sm text-emerald-800">La empresa aliada sumó {pesos(resultado.extra)} más gracias a ti.</p>}
-        <p className="text-sm text-emerald-800">
+      <div className="space-y-3 rounded-2xl bg-exito-50 p-5 ring-1 ring-inset ring-exito-200">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-exito-600 text-xl font-bold text-white shadow-sm" aria-hidden>
+          ✓
+        </span>
+        <p className="font-display text-xl font-extrabold text-exito-900">¡Gracias! Donaste ${montoPesos.toLocaleString("es-CO")} 💚</p>
+        {resultado.extra > 0n && <p className="text-sm text-exito-800">La empresa aliada sumó {pesos(resultado.extra)} más gracias a ti.</p>}
+        <p className="text-sm text-exito-800">
           Referencia del pago: <strong>{resultado.referencia}</strong>. Tu donación ya está en el contrato y nadie la puede mover sin verificación.
         </p>
         <button className="btn-primario w-full" onClick={() => navegar(`/rastreo/${campana}/${resultado.cuenta}`)}>
@@ -176,28 +217,29 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
         <button className="btn-secundario w-full text-xs" onClick={() => navigator.clipboard?.writeText(enlace).then(() => avisar("exito", "Enlace copiado", "Guárdalo para seguir tu donación desde cualquier lugar."))}>
           Copiar mi enlace de rastreo
         </button>
-        <p className="text-[11px] text-emerald-700">
+        <p className="text-[11px] text-exito-700">
           Te avisaremos aquí (🔔) cuando se use tu plata. Tu "billetera invisible" ({corta(resultado.cuenta)}) quedó guardada en este navegador.
         </p>
+        <RespaldoPalabras />
       </div>
     );
   }
 
   if (fase === "pasarela" || fase === "procesando") {
     return (
-      <div className="overflow-hidden rounded-xl border border-stone-200">
+      <div className="overflow-hidden rounded-xl border border-neutro-200">
         <div className={`px-4 py-3 text-white ${metodo === "nequi" ? "bg-[#200020]" : "bg-[#0b3b8c]"}`}>
           <p className="text-xs uppercase tracking-wide opacity-80">Pasarela de pagos · simulación</p>
           <p className="text-lg font-bold">{metodo === "nequi" ? "Nequi" : `PSE · ${banco}`}</p>
         </div>
         <div className="space-y-3 p-4">
-          <p className="text-sm text-stone-600">
-            Pagar <strong className="text-stone-900">${montoPesos.toLocaleString("es-CO")}</strong> a Rastro Solidario
+          <p className="text-sm text-neutro-600">
+            Pagar <strong className="text-neutro-900">${montoPesos.toLocaleString("es-CO")}</strong> a Rastro Solidario
             {metodo === "nequi" ? ` desde el celular ${celular}` : ""}.
           </p>
           {fase === "pasarela" ? (
             <>
-              <p className="rounded-lg bg-stone-50 p-3 text-xs text-stone-500">
+              <p className="rounded-lg bg-neutro-50 p-3 text-xs text-neutro-500">
                 {metodo === "nequi" ? "En la vida real te llegaría una notificación a la app de Nequi para aceptar el pago." : "En la vida real te llevaría al portal de tu banco."} En esta
                 demo no se mueve dinero real.
               </p>
@@ -216,8 +258,8 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
                 const hecho = hechos.has(p.id);
                 const enCurso = !hecho && PASOS.findIndex((x) => !hechos.has(x.id)) === PASOS.indexOf(p);
                 return (
-                  <li key={p.id} className={`flex items-center gap-2 text-sm ${hecho ? "text-emerald-800" : enCurso ? "text-stone-900" : "text-stone-400"}`}>
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${hecho ? "bg-emerald-600 text-white" : enCurso ? "animate-pulse bg-amber-400" : "bg-stone-200"}`}>
+                  <li key={p.id} className={`flex items-center gap-2 text-sm ${hecho ? "text-exito-800" : enCurso ? "text-neutro-900" : "text-neutro-400"}`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${hecho ? "bg-exito-600 text-white" : enCurso ? "animate-pulse bg-alerta-400" : "bg-neutro-200"}`}>
                       {hecho ? "✓" : ""}
                     </span>
                     {p.texto}
@@ -241,8 +283,11 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
     >
       <div className="grid grid-cols-2 gap-2">
         {(["nequi", "pse"] as const).map((m) => (
-          <label key={m} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-semibold ${metodo === m ? "border-teal-600 bg-teal-50" : "border-stone-200"}`}>
-            <input type="radio" name="metodo" checked={metodo === m} onChange={() => setMetodo(m)} />
+          <label
+            key={m}
+            className={`flex cursor-pointer items-center gap-2.5 rounded-xl border p-3 text-sm font-semibold transition ${metodo === m ? "border-marca-500 bg-marca-50 text-marca-900 ring-2 ring-marca-500/15" : "border-neutro-200 bg-white text-neutro-700 hover:border-neutro-300"}`}
+          >
+            <input type="radio" name="metodo" className="accent-marca-700" checked={metodo === m} onChange={() => setMetodo(m)} />
             {m === "nequi" ? "Nequi" : "PSE (banco)"}
           </label>
         ))}
@@ -262,12 +307,16 @@ function DonarFacil({ campana, montoPesos, extra }: { campana: Address; montoPes
           </select>
         </label>
       )}
-      <button className="btn-primario w-full py-3 text-base" disabled={!valido}>
+      <button className="btn-primario w-full rounded-2xl py-3.5 text-base" disabled={!valido}>
         Donar {montoPesos ? `$${montoPesos.toLocaleString("es-CO")}` : ""}
+        <span aria-hidden>→</span>
       </button>
-      <p className="text-[11px] leading-relaxed text-stone-500">
+      <p className="flex gap-2 rounded-xl bg-neutro-50 p-3 text-[11px] leading-relaxed text-neutro-500">
+        <span aria-hidden className="text-sm leading-4">🔒</span>
+        <span>
         Sin MetaMask, sin cripto y sin comisiones de red: una billetera invisible se crea en tu navegador y Rastro Solidario paga el gas.
         {direccion && <> Ya tienes una: {corta(direccion)}.</>} Pasarela simulada para la demo: no se cobra dinero real.
+        </span>
       </p>
     </form>
   );
@@ -350,12 +399,12 @@ function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: Address
       className="space-y-3"
     >
       {address && saldo !== undefined && saldo < wei && (
-        <p className="rounded-lg bg-rose-50 p-2 text-xs text-rose-800">Tu saldo ({pesos(saldo)}) no alcanza. Pide MockCOP en el faucet de arriba.</p>
+        <p className="rounded-lg bg-peligro-50 p-2 text-xs text-peligro-800">Tu saldo ({pesos(saldo)}) no alcanza. Pide MockCOP en el faucet de arriba.</p>
       )}
       <button className="btn-primario w-full py-3 text-base" disabled={!address || ocupado || pesosNum <= 0}>
         {!address ? "Conecta tu wallet para donar" : firmando ? "Firma el permiso en MetaMask…" : pendiente ? `${pendiente}…` : `Donar ${pesosNum.toLocaleString("es-CO")} MockCOP`}
       </button>
-      <label className="flex items-start gap-2 text-xs text-stone-500">
+      <label className="flex items-start gap-2 text-xs text-neutro-500">
         <input type="checkbox" checked={usarApprove} onChange={(e) => setUsarApprove(e.target.checked)} className="mt-0.5" />
         <span>
           Usar <em>approve</em> + donar (2 transacciones). Por defecto se usa una firma gratuita (permit) y <strong>una sola transacción</strong>.
@@ -378,22 +427,28 @@ function DonacionesRecientes({ campana }: { campana: Address }) {
       {recientes.length === 0 ? (
         <Vacio>Sé la primera persona en donar.</Vacio>
       ) : (
-        <ul className="divide-y divide-stone-100">
+        <ul className="divide-y divide-neutro-100">
           {recientes.map((d, i) => {
             const empresa = matchings.some((m) => mismaDireccion(m.empresa, d.donante));
             return (
-              <li key={`${d.donante}-${d.bloque}-${i}`} className="flex items-center justify-between py-2 text-sm">
-                {empresa ? (
-                  <span className="text-xs font-semibold text-amber-800">🎁 {nombre(d.donante) ?? "Empresa aliada"} (matching)</span>
-                ) : (
-                  <a className="font-mono text-xs text-stone-500 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
-                    {corta(d.donante)}
-                  </a>
-                )}
-                <span className="text-right">
-                  <strong className="text-stone-900">{pesos(d.monto)}</strong>
-                  <span className="block text-[11px] text-stone-400">{fecha(d.fecha)}</span>
+              <li key={`${d.donante}-${d.bloque}-${i}`} className="flex items-center gap-3 py-2.5 text-sm">
+                <span
+                  aria-hidden
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${empresa ? "bg-alerta-100 ring-1 ring-inset ring-alerta-200" : "bg-marca-50 text-marca-700 ring-1 ring-inset ring-marca-100"}`}
+                >
+                  {empresa ? "🎁" : "♥"}
                 </span>
+                <span className="min-w-0 flex-1">
+                  {empresa ? (
+                    <span className="block truncate text-xs font-semibold text-alerta-800">{nombre(d.donante) ?? "Empresa aliada"}</span>
+                  ) : (
+                    <a className="block truncate font-mono text-xs text-neutro-600 hover:text-marca-700 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
+                      {corta(d.donante)}
+                    </a>
+                  )}
+                  <span className="block text-[11px] text-neutro-400">{empresa ? "Matching · " : ""}{fecha(d.fecha)}</span>
+                </span>
+                <strong className="font-display text-neutro-900">${pesos(d.monto)}</strong>
               </li>
             );
           })}
@@ -431,48 +486,48 @@ function PorQueMonad() {
 
   return (
     <Seccion titulo="¿Por qué Monad?">
-      <ul className="space-y-2 text-sm text-stone-600">
+      <ul className="space-y-3 text-sm leading-relaxed text-neutro-600 [&>li]:border-l-2 [&>li]:border-marca-200 [&>li]:pl-3">
         <li>
-          <strong className="text-stone-800">Comisiones casi nulas.</strong> En una emergencia la gente dona 5.000 o 10.000 pesos; en una cadena cara el gas se comería la donación, y
+          <strong className="text-neutro-800">Comisiones casi nulas.</strong> En una emergencia la gente dona 5.000 o 10.000 pesos; en una cadena cara el gas se comería la donación, y
           aquí además lo paga un patrocinador.
         </li>
         <li>
-          <strong className="text-stone-800">Rendimiento.</strong> En las primeras horas llegan miles de donaciones a la vez; bloques de ~400 ms y ejecución en paralelo.
+          <strong className="text-neutro-800">Rendimiento.</strong> En las primeras horas llegan miles de donaciones a la vez; bloques de ~400 ms y ejecución en paralelo.
         </li>
         <li>
-          <strong className="text-stone-800">Contratos de hasta 128 KB.</strong> Toda la lógica anticorrupción (censo, sobrecosto, matching, reputación) vive en la cadena, no en un
+          <strong className="text-neutro-800">Contratos de hasta 128 KB.</strong> Toda la lógica anticorrupción (censo, sobrecosto, matching, reputación) vive en la cadena, no en un
           servidor.
         </li>
       </ul>
       {c && (
-        <div className="mt-4 rounded-xl bg-teal-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+        <div className="mt-4 rounded-xl bg-marca-50 p-4 ring-1 ring-inset ring-marca-100">
+          <p className="rotulo text-marca-800">
             Medición del script de simulación · {sim!.red}
             {sim!.chainId === 31337 && " (nodo local, no es Monad)"}
           </p>
           <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-teal-700">Donaciones en paralelo</dt>
-              <dd className="text-xl font-bold text-teal-900">{c.paralelo.cantidad}</dd>
+              <dt className="text-marca-700">Donaciones en paralelo</dt>
+              <dd className="text-xl font-bold text-marca-900">{c.paralelo.cantidad}</dd>
             </div>
             <div>
-              <dt className="text-teal-700">Confirmadas en</dt>
-              <dd className="text-xl font-bold text-teal-900">{(c.paralelo.ventanaMs / 1000).toFixed(2)} s</dd>
+              <dt className="text-marca-700">Confirmadas en</dt>
+              <dd className="text-xl font-bold text-marca-900">{(c.paralelo.ventanaMs / 1000).toFixed(2)} s</dd>
             </div>
             <div>
-              <dt className="text-teal-700">Latencia p50 / p95</dt>
-              <dd className="font-bold text-teal-900">
+              <dt className="text-marca-700">Latencia p50 / p95</dt>
+              <dd className="font-bold text-marca-900">
                 {c.paralelo.latenciaMs.p50} / {c.paralelo.latenciaMs.p95} ms
               </dd>
             </div>
             <div>
-              <dt className="text-teal-700">Gas por donación</dt>
-              <dd className="font-bold text-teal-900">
+              <dt className="text-marca-700">Gas por donación</dt>
+              <dd className="font-bold text-marca-900">
                 {Number(c.costoPromedio).toFixed(5)} {ES_MONAD ? "MON" : "ETH"}
               </dd>
             </div>
           </dl>
-          <p className="mt-2 text-xs text-teal-700">
+          <p className="mt-2 text-xs text-marca-700">
             {c.paralelo.bloquesUsados} bloques · hasta {c.paralelo.maxDonacionesEnUnBloque} donaciones en un mismo bloque · {new Date(sim!.fecha).toLocaleString("es-CO")}
           </p>
         </div>
