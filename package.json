@@ -2,7 +2,7 @@
   "name": "rastro-solidario",
   "version": "0.1.0",
   "private": true,
-  "description": "Donaciones para emergencias en Monad: desembolsos por etapas, verificación 2 de 3 + confirmación de la comunidad, alerta de sobrecosto, matching de empresas, reputación on-chain y donación sin cripto.",
+  "description": "Donaciones para emergencias en Monad: desembolsos por etapas, verificación 2 de 3 + confirmación de la comunidad, alerta de sobrecosto, donaciones corporativas, constancia de donación, reputación on-chain y donación sin cripto.",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "build:contracts": "node scripts/foundry.mjs forge build",

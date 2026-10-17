@@ -17,5 +17,20 @@ export default defineConfig(({ mode }) => {
       proxy: { "/rpc": { target: rpc, changeOrigin: true, rewrite: () => "" } },
     },
     preview: { port: 4173, host: true, proxy: { "/rpc": { target: rpc, changeOrigin: true, rewrite: () => "" } } },
+    build: {
+      // Librerías en archivos aparte: se descargan en paralelo y el navegador las conserva en caché
+      // entre despliegues (solo cambia el código de la app).
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return;
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react";
+            if (/[\\/]node_modules[\\/](viem|ox|abitype|@noble|@scure)[\\/]/.test(id)) return "viem";
+            if (/[\\/]node_modules[\\/](wagmi|@wagmi|@tanstack)[\\/]/.test(id)) return "wagmi";
+            if (/[\\/]node_modules[\\/]leaflet[\\/]/.test(id)) return "mapa";
+          },
+        },
+      },
+    },
   };
 });
