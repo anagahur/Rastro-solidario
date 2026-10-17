@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter frontend build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/servicios.mjs": {
+      "maxDuration": 60,
+      "includeFiles": "{reports/deploy-10143.json,evidencias-publicas/**}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:ruta*", "destination": "/api/servicios?__ruta=/api/:ruta*" },
+    { "source": "/ipfs/:ruta*", "destination": "/api/servicios?__ruta=/ipfs/:ruta*" }
+  ]
+}

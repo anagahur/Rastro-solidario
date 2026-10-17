@@ -33,6 +33,7 @@ import {
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { bytesToHex } from "viem";
 import {
+  INDICE_PASARELA,
   MNEMONIC_ANVIL,
   PK_ANVIL_0,
   RAIZ,
@@ -325,9 +326,14 @@ async function fondear() {
     );
   }
 
+  // Acuña quien sea dueña de MockCOP: el deployer o, tras `pnpm pasarela:monad`, la pasarela.
+  const duenoCop = await publico.readContract({ address: reporte.MockCOP, abi: ABI.cop, functionName: "owner" });
+  const acunador = [deployer, cuenta(INDICE_PASARELA)].find((c) => c.address.toLowerCase() === duenoCop.toLowerCase());
+  if (!acunador) throw new Error(`MockCOP pertenece a ${duenoCop}: no es el deployer ni la pasarela de SIM_MNEMONIC.`);
+
   // Un solo tx para acuñar tokens y uno para repartir MON (por lotes de 100)
   for (let i = 0; i < mintDest.length; i += 100) {
-    const r = await remitente.enviar(deployer, {
+    const r = await remitente.enviar(acunador, {
       address: reporte.MockCOP, abi: ABI.cop, functionName: "mintLote",
       args: [mintDest.slice(i, i + 100), mintMontos.slice(i, i + 100)], etiqueta: "mintLote",
     });

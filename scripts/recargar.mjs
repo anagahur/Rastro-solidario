@@ -8,7 +8,7 @@
 // importan en MetaMask para el Panel de actores. Paga el deployer (DEPLOYER_PRIVATE_KEY).
 import { createPublicClient, createWalletClient, formatEther, http, parseEther } from "viem";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
-import { abi, dormir, leerReporte, redPorNombre } from "./lib/entorno.mjs";
+import { INDICE_PASARELA, INDICE_PATROCINADOR, abi, dormir, leerReporte, redPorNombre } from "./lib/entorno.mjs";
 import { conReintentos } from "./lib/tx.mjs";
 
 const args = process.argv.slice(2);
@@ -26,7 +26,8 @@ if (!pk || !mnemonic) {
 
 // [índice en SIM_MNEMONIC, rol, saldo objetivo]
 const OBJETIVOS = [
-  [9, "Patrocinador de gas", "3"],
+  [INDICE_PATROCINADOR, "Patrocinador de gas", "3"],
+  [INDICE_PASARELA, "Pasarela (MockCOP)", "1"],
   [1, "Fundación", "1"],
   [2, "Verificador 1", "0.5"],
   [3, "Verificador 2", "0.5"],

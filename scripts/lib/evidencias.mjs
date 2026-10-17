@@ -8,7 +8,10 @@
 // Modos:
 //   - Local (por defecto): los archivos quedan en evidencias/ y la app los sirve en /ipfs/<cid>.
 //   - Pinata (PINATA_JWT en .env): además se fijan en IPFS de verdad y se usa el CID de Pinata.
+//   - Vercel: el disco no persiste, así que subir evidencias exige PINATA_JWT. Las de la
+//     simulación ya publicada se sirven desde evidencias-publicas/ (pnpm evidencias:publicar).
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { CID } from "multiformats/cid";
 import * as raw from "multiformats/codecs/raw";
@@ -16,8 +19,14 @@ import { sha256 } from "multiformats/hashes/sha2";
 import { keccak256, toHex } from "viem";
 import { RAIZ } from "./entorno.mjs";
 
-export const DIR_EVIDENCIAS = path.join(RAIZ, "evidencias");
+const EN_VERCEL = !!process.env.VERCEL;
+export const DIR_EVIDENCIAS = EN_VERCEL ? path.join(os.tmpdir(), "evidencias") : path.join(RAIZ, "evidencias");
+/** Evidencias de la cadena publicada que van dentro del repositorio (se sirven en Vercel). */
+export const DIR_PUBLICAS = path.join(RAIZ, "evidencias-publicas");
 export const MAX_BYTES = 8 * 1024 * 1024;
+
+/** ¿Se pueden subir evidencias nuevas? En Vercel solo con Pinata (el disco no persiste). */
+export const puedeGuardar = () => !EN_VERCEL || !!process.env.PINATA_JWT;
 
 const TIPOS_PERMITIDOS = /^(image\/(png|jpeg|webp|gif|svg\+xml)|application\/(pdf|json)|text\/plain)$/;
 
@@ -37,6 +46,9 @@ export async function guardar(bytes, tipo) {
   if (!(bytes instanceof Uint8Array)) bytes = new Uint8Array(bytes);
   if (bytes.length === 0 || bytes.length > MAX_BYTES) throw new Error(`Tamaño inválido (máx. ${MAX_BYTES / 1024 / 1024} MB)`);
   if (!tipoPermitido(tipo)) throw new Error(`Tipo de archivo no permitido: ${tipo}`);
+  if (!puedeGuardar()) {
+    throw Object.assign(new Error("Subir evidencias en línea requiere PINATA_JWT (IPFS) configurado en el servidor"), { estado: 503 });
+  }
 
   let cid = await cidDe(bytes);
   let fijado = "local";
@@ -58,8 +70,8 @@ export async function guardarJson(objeto) {
 /** @returns {{ bytes: Buffer, tipo: string } | null} */
 export function leer(cid) {
   if (!/^[a-z0-9]{20,120}$/i.test(cid)) return null;
-  const ruta = path.join(DIR_EVIDENCIAS, cid);
-  if (!fs.existsSync(ruta)) return null;
+  const ruta = [DIR_EVIDENCIAS, DIR_PUBLICAS].map((d) => path.join(d, cid)).find((r) => fs.existsSync(r));
+  if (!ruta) return null;
   const rutaTipo = `${ruta}.tipo`;
   return { bytes: fs.readFileSync(ruta), tipo: fs.existsSync(rutaTipo) ? fs.readFileSync(rutaTipo, "utf8") : "application/octet-stream" };
 }

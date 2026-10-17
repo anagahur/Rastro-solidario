@@ -195,12 +195,52 @@ Las llaves privadas las muestra `pnpm wallets -- --red local --llaves`.
 Opciones de la simulación: `--escenario completo|falla|abierta|vencimiento|todos` · `--donantes N` ·
 `--familias N` · `--concurrencia N` · `--semilla N`.
 
+Mantenimiento en vivo: `pnpm recargar:monad` sube el saldo de la pasarela, el patrocinador de gas y
+los actores (cada donación con Nequi/PSE cuesta ≈ 0,07 MON porque Monad cobra el gas límite).
+
+**RPC de respaldo.** El servidor y el navegador usan Ankr y dRPC si el RPC oficial se cae o se pone
+lento (`MONAD_RPC_RESPALDO` / `VITE_RPC_RESPALDO`). El servidor mide cada 15 s qué nodo responde mejor.
+
+## Publicar en Vercel
+
+La app es estática salvo los servicios de la demo (`/api/*`, `/ipfs/*`), que en Vercel corren en la
+función [`api/servicios.mjs`](api/servicios.mjs) (el mismo código de `pnpm dev`). [`vercel.json`](vercel.json)
+ya trae el build, la función y las reescrituras; las direcciones públicas de los contratos van en
+`frontend/.env.production` (lo actualiza `pnpm deploy:monad`).
+
+Una sola vez, en este computador:
+
+1. `pnpm pasarela:monad`: pasa la propiedad de MockCOP a una cuenta propia de la pasarela
+   (`SIM_MNEMONIC` índice 10) y le deja 1 MON. Así el servidor público no guarda la llave del deployer,
+   que administra el registro de actores.
+2. `pnpm evidencias:publicar`: copia a `evidencias-publicas/` las facturas, fotos y actas de las
+   campañas en Monad (Vercel no tiene la carpeta local `evidencias/`). Haz commit de esa carpeta.
+3. `pnpm vercel:env`: escribe `.env.vercel` (ignorado por git) con las variables para Vercel.
+   Solo contiene las llaves de la pasarela y del patrocinador de gas.
+
+En [vercel.com](https://vercel.com/new): importa el repositorio, deja la raíz del proyecto en la
+carpeta del repo (Vercel toma `vercel.json`) y en *Environment Variables* pega el contenido de
+`.env.vercel`. Después del primer despliegue:
+
+4. `pnpm url:monad -- https://<tu-app>.vercel.app/` para que los NFT de recibo enlacen a la app publicada.
+5. `cd pruebas-e2e && BASE_URL=https://<tu-app>.vercel.app node monad.mjs` (dona 2 veces de verdad).
+
+| Variable en Vercel | Para qué |
+|---|---|
+| `CHAIN_ID` | `10143` |
+| `PASARELA_PRIVATE_KEY` | Dueña de MockCOP: acuña los pesos de Nequi / PSE |
+| `PATROCINADOR_PRIVATE_KEY` | Paga el gas de quien dona sin cripto, de las familias y de los reembolsos |
+| `PINATA_JWT` | Opcional. Sin ella todo funciona menos **subir evidencias nuevas** desde el Panel de actores (el disco de Vercel no persiste) |
+| `MONAD_RPC_URL`, `MONAD_RPC_RESPALDO` | Opcionales (RPC principal y de respaldo) |
+| `LIMITE_PAGOS_IP`, `LIMITE_REENVIOS_IP`, `LIMITE_EVIDENCIAS_IP` | Opcionales. Tope por IP cada 10 min (10, 30 y 30). Súbelos si en una presentación mucha gente dona desde la misma red wifi |
+
 ## Pruebas
 
 | Qué | Cómo | Resultado |
 |---|---|---|
 | Contratos | `pnpm test:contracts` | **107 tests**: camino feliz con 50 donantes, conteo en campo (menos unidades = rechazo), comunidad (quórum, orden, plazo), gas patrocinado (familia y donante sin gas, firma alterada), sobrecosto (3 de 3, un rechazo basta), matching (tope, meta, varias empresas, devolución, cancelación, conflicto de interés), reputación entre campañas, 20+ accesos no autorizados, NFT, fuzz e **invariantes** (el saldo siempre cuadra, incluido el matching bloqueado; nunca sale más de lo que entró; la fundación nunca cobra) |
 | Simulación | `pnpm simular:local` | 3 escenarios con wallets simuladas, evidencias con imágenes y reputación final |
+| Monad testnet | `cd pruebas-e2e && node monad.mjs` (o `BASE_URL=… node monad.mjs`) | Contra la app real en Monad (local o Vercel): API, 5 pestañas sin errores, evidencia publicada, donación con Nequi y con PSE y su rastreo |
 | Frontend | `cd pruebas-e2e && npm run instalar && npm run prueba` | Chromium real: censo y tarjetas QR, matching, donación con Nequi sin wallet, donación con MetaMask, sobrecosto, evidencia con foto y GPS, 3 de 3 verificadores, familia confirma desde el celular, página pública (línea de tiempo, mapa, integridad), reputación, avisos, rechazo, reembolso sin gas y vista móvil |
 
 ## Límites que conviene reconocer en la sustentación

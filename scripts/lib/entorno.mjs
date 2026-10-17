@@ -6,7 +6,12 @@ import dotenv from "dotenv";
 import { defineChain, fallback, http } from "viem";
 
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-dotenv.config({ path: path.join(RAIZ, ".env") });
+// En Vercel las variables vienen del panel del proyecto, no de un .env.
+if (!process.env.VERCEL) dotenv.config({ path: path.join(RAIZ, ".env") });
+
+/** Índices en SIM_MNEMONIC de las dos cuentas que operan la demo en vivo. */
+export const INDICE_PATROCINADOR = 9; // paga el gas de las acciones sin cripto
+export const INDICE_PASARELA = 10; // dueña de MockCOP: acuña los pesos de Nequi / PSE
 
 export const MNEMONIC_ANVIL = "test test test test test test test test test test test junk";
 export const PK_ANVIL_0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -52,15 +57,16 @@ export const monadTestnet = defineChain({
  * Transporte con respaldo: si un RPC falla (caído, lento o límite de tasa) se pasa al siguiente.
  * Las transacciones se firman localmente, así que cualquier nodo puede difundirlas.
  */
-export function transporteRed(red, { timeout = 10_000 } = {}) {
+export function transporteRed(red, { timeout = 10_000, ranking = false } = {}) {
   const urls = red.rpcUrls.default.http;
   if (urls.length === 1) return http(urls[0], { timeout, retryCount: 2, retryDelay: 300 });
   // Sin reintentos por nodo: ante un error se pasa enseguida al siguiente; se reintenta la cadena.
-  // rank: cada 15 s mide latencia y estabilidad de cada nodo y usa primero el mejor, así un nodo
-  // lento (no solo uno caído) deja de frenar las donaciones.
+  // ranking (solo procesos que viven mucho, como el servidor): cada 15 s mide latencia y
+  // estabilidad de cada nodo y usa primero el mejor, así un nodo lento (no solo uno caído) deja
+  // de frenar las donaciones. Su temporizador no termina nunca: un script con ranking no saldría.
   return fallback(
     urls.map((url) => http(url, { timeout, retryCount: 0 })),
-    { retryCount: 2, retryDelay: 300, rank: RANKING_RPC },
+    { retryCount: 2, retryDelay: 300, ...(ranking ? { rank: RANKING_RPC } : {}) },
   );
 }
 
