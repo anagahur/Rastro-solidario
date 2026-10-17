@@ -1,0 +1,62 @@
+import { defineChain, type Address } from "viem";
+import { monadTestnet } from "viem/chains";
+
+const env = import.meta.env;
+const CERO = "0x0000000000000000000000000000000000000000" as Address;
+
+export const CHAIN_ID = Number(env.VITE_CHAIN_ID || 31337);
+const RPC_CONFIGURADO: string =
+  env.VITE_RPC_URL || (CHAIN_ID === 10143 ? "https://testnet-rpc.monad.xyz" : "http://127.0.0.1:8545");
+
+/**
+ * Si el nodo es local pero la app se abrió desde otro equipo (p. ej. el celular de una familia
+ * que escaneó su QR), el 127.0.0.1 no le sirve: se usa el proxy /rpc del servidor de Vite.
+ */
+const esLocal = (h: string) => h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+export const RPC_URL: string = (() => {
+  try {
+    const rpc = new URL(RPC_CONFIGURADO);
+    if (typeof window !== "undefined" && esLocal(rpc.hostname) && !esLocal(window.location.hostname)) {
+      return `${window.location.origin}/rpc`;
+    }
+  } catch {}
+  return RPC_CONFIGURADO;
+})();
+export const EXPLORER_URL: string =
+  env.VITE_EXPLORER_URL || (CHAIN_ID === 10143 ? "https://testnet.monadvision.com" : "");
+export const ES_MONAD = CHAIN_ID === 10143;
+/** Usuario del bot de Telegram para avisos (opcional; ver scripts/notificador.mjs). */
+export const BOT_TELEGRAM: string = env.VITE_TELEGRAM_BOT || "";
+
+export const DIRECCIONES = {
+  cop: (env.VITE_MOCKCOP_ADDRESS || CERO) as Address,
+  registro: (env.VITE_REGISTRO_ADDRESS || CERO) as Address,
+  recibo: (env.VITE_RECIBO_ADDRESS || CERO) as Address,
+  factory: (env.VITE_FACTORY_ADDRESS || CERO) as Address,
+  reputacion: (env.VITE_REPUTACION_ADDRESS || CERO) as Address,
+  reenviador: (env.VITE_REENVIADOR_ADDRESS || CERO) as Address,
+};
+export const CONFIGURADO = Object.values(DIRECCIONES).every((d) => d !== CERO);
+
+/**
+ * Monad testnet parte de la definición oficial de viem (incluye Multicall3, así las lecturas
+ * se agrupan en una sola llamada) con el RPC y el explorador configurados.
+ * En local se usa Anvil.
+ */
+export const appChain = ES_MONAD
+  ? defineChain({
+      ...monadTestnet,
+      nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
+      rpcUrls: { default: { http: [RPC_URL] } },
+      blockExplorers: { default: { name: "MonadVision", url: EXPLORER_URL } },
+    })
+  : defineChain({
+      id: CHAIN_ID,
+      name: CHAIN_ID === 31337 ? "Anvil Local" : `Chain ${CHAIN_ID}`,
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: { default: { http: [RPC_URL] } },
+      testnet: true,
+    });
+
+/** Intervalo de refresco de lecturas: Monad produce un bloque cada ~400 ms. */
+export const REFRESCO_MS = ES_MONAD ? 2500 : 2000;

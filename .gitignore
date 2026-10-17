@@ -1,0 +1,21 @@
+node_modules/
+.env
+frontend/.env
+frontend/dist/
+contracts/out/
+contracts/cache/
+broadcast/
+*.log
+.DS_Store
+# reportes de despliegue locales (anvil) se regeneran en cada corrida
+reports/deploy-31337.json
+reports/simulacion-31337.json
+reports/simulacion-31337.md
+# evidencias subidas en local (facturas, fotos) y suscripciones del notificador
+evidencias/
+reports/suscripciones-*.json
+reports/notificador-*.json
+reports/familias-*.json
+frontend/public/familias-demo.json
+frontend/tsconfig.tsbuildinfo
+pruebas-e2e/node_modules/

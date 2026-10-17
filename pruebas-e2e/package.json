@@ -1,0 +1,13 @@
+{
+  "name": "pruebas-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Prueba E2E del frontend real contra Anvil con un proveedor de wallet simulado.",
+  "scripts": {
+    "instalar": "npm install && npx playwright install chromium",
+    "prueba": "node prueba.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.48.2"
+  }
+}

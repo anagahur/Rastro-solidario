@@ -1,0 +1,36 @@
+{
+  "name": "rastro-solidario",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Donaciones para emergencias en Monad: desembolsos por etapas, verificación 2 de 3 + confirmación de la comunidad, alerta de sobrecosto, matching de empresas, reputación on-chain y donación sin cripto.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build:contracts": "node scripts/foundry.mjs forge build",
+    "test:contracts": "node scripts/foundry.mjs forge test",
+    "test:contracts:v": "node scripts/foundry.mjs forge test -vvv",
+    "gas": "node scripts/foundry.mjs forge test --gas-report",
+    "abis": "node scripts/exportar-abis.mjs",
+    "anvil": "node scripts/foundry.mjs anvil",
+    "deploy:local": "node scripts/deploy.mjs local && node scripts/configurar-env.mjs 31337",
+    "deploy:monad": "node scripts/deploy.mjs monad && node scripts/configurar-env.mjs 10143",
+    "verify:monad": "node scripts/verificar.mjs 10143",
+    "wallets": "node scripts/wallets.mjs",
+    "wallets:nuevo": "node scripts/wallets.mjs --nuevo",
+    "simular": "node scripts/simular.mjs",
+    "simular:local": "node scripts/simular.mjs --red local",
+    "simular:monad": "node scripts/simular.mjs --red monad",
+    "demo": "node scripts/simular.mjs --red local --escenario todos",
+    "notificador": "node scripts/notificador.mjs --red local",
+    "notificador:monad": "node scripts/notificador.mjs --red monad",
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.1.0",
+    "multiformats": "13.3.1"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "viem": "^2.21.45"
+  }
+}
