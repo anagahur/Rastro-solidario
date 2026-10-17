@@ -76,6 +76,23 @@ try {
       mal(`donación ${metodo}: ${resultado.replace(/\s+/g, " ")}`);
     } else {
       ok(`donación ${metodo} de 2.000 en ${s} s`);
+      if (metodo === "nequi") {
+        // Constancia en PDF y nombre público elegido por el donante (sin gas)
+        const alias = `Prueba ${Date.now().toString(36).slice(-4)}`;
+        await p.getByLabel("Nombre completo (opcional)").fill("Persona de Prueba");
+        await p.getByLabel("Número (opcional)").fill("1234567890");
+        await p.getByRole("radio", { name: "Con mi nombre" }).click();
+        await p.getByLabel("Nombre que verán todos").fill(alias);
+        await p.getByRole("button", { name: "Guardar cómo aparezco" }).click();
+        await p
+          .getByRole("link", { name: alias })
+          .first()
+          .waitFor({ timeout: 60000 })
+          .then(() => ok(`nombre público «${alias}» visible en Últimas donaciones`), () => mal("el nombre público no apareció"));
+        const [descarga] = await Promise.all([p.waitForEvent("download", { timeout: 30000 }), p.getByRole("button", { name: "Descargar constancia (PDF)" }).click()]);
+        const tam = (await fs.promises.readFile(await descarga.path())).length;
+        tam > 1000 ? ok(`constancia PDF descargada (${(tam / 1024).toFixed(0)} KB)`) : mal("la constancia PDF salió vacía");
+      }
       await p.getByRole("button", { name: "Ver a dónde va mi dinero →" }).click();
       await p
         .getByText("De tus 2.000", { exact: false })

@@ -14,6 +14,7 @@ import {
 } from "../src/HistorialReputacion.sol";
 import { ReenviadorGas } from "../src/ReenviadorGas.sol";
 import { Dispersor } from "../src/Dispersor.sol";
+import { NombresDonantes, ICampanaFactoryNombres } from "../src/NombresDonantes.sol";
 
 /// @notice Despliega todo el sistema y registra los actores de la demo.
 ///
@@ -38,6 +39,7 @@ contract Deploy is Script {
         HistorialReputacion reputacion;
         ReenviadorGas reenviador;
         Dispersor dispersor;
+        NombresDonantes nombres;
     }
 
     function run() external {
@@ -82,6 +84,7 @@ contract Deploy is Script {
         d.reputacion.configurarFactory(ICampanaFactoryReputacion(address(d.factory)));
         d.recibo.configurarUrlBase(frontendUrl);
         d.dispersor = new Dispersor();
+        d.nombres = new NombresDonantes(ICampanaFactoryNombres(address(d.factory)), address(d.reenviador), deployer);
 
         bytes32 F = d.registro.FUNDACION_ROLE();
         bytes32 V = d.registro.VERIFICADOR_ROLE();
@@ -108,6 +111,7 @@ contract Deploy is Script {
         console2.log("Reputacion      :", address(d.reputacion));
         console2.log("ReenviadorGas   :", address(d.reenviador));
         console2.log("Dispersor       :", address(d.dispersor));
+        console2.log("NombresDonantes :", address(d.nombres));
         console2.log("Fundacion       :", fundacion);
 
         _escribirReporte(d, deployer, fundacion, verificadores, proveedores, empresa, patrocinador);
@@ -137,6 +141,7 @@ contract Deploy is Script {
             _par("HistorialReputacion", address(d.reputacion)),
             _par("ReenviadorGas", address(d.reenviador)),
             _par("Dispersor", address(d.dispersor)),
+            _par("NombresDonantes", address(d.nombres)),
             '  "actores": {\n',
             '    "fundacion": "', vm.toString(fundacion), '",\n'
         );

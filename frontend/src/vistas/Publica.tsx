@@ -5,7 +5,7 @@ import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
 import { Mapa, type PuntoMapa } from "../componentes/Mapa";
 import { Qr } from "../componentes/Qr";
-import { useCampana, useEmpresasAliadas, useNombres, useTodasLasDonaciones, useVotosTodas } from "../lib/datos";
+import { useCampana, useEmpresasAliadas, useNombres, useNombresPublicos, useTodasLasDonaciones, useVotosTodas } from "../lib/datos";
 import { consultaEvidencia, urlIpfs, type EvidenciaCargada } from "../lib/evidencia";
 import { MOTIVO_REEMBOLSO, corta, fecha, mismaDireccion, pesos } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
@@ -35,6 +35,7 @@ export function VistaPublica({ campana }: { campana?: Address }) {
   const { data: donaciones } = useTodasLasDonaciones(campana, info?.numeroDonaciones);
   const votos = useVotosTodas(campana, etapas?.length ?? 0);
   const { aliadas, esEmpresa } = useEmpresasAliadas(campana);
+  const nombrePublico = useNombresPublicos(campana, (donaciones ?? []).map((d) => d.donante));
   const nombre = useNombres([...(etapas ?? []).map((e) => e.proveedor), ...(info?.verificadores ?? [])]);
   const avisar = useAvisar();
 
@@ -132,7 +133,7 @@ export function VistaPublica({ campana }: { campana?: Address }) {
     const filas = [["tipo", "fecha", "cuenta", "monto_mockcop", "bloque", "detalle"]];
     for (const d of donaciones ?? []) {
       const emp = aliadas.find((e) => mismaDireccion(e.cuenta, d.donante));
-      filas.push([emp ? "empresa" : "donacion", new Date(Number(d.fecha) * 1000).toISOString(), d.donante, (Number(d.monto) / 1e18).toFixed(0), d.bloque.toString(), emp?.nombre ?? ""]);
+      filas.push([emp ? "empresa" : "donacion", new Date(Number(d.fecha) * 1000).toISOString(), d.donante, (Number(d.monto) / 1e18).toFixed(0), d.bloque.toString(), emp?.nombre ?? nombrePublico(d.donante) ?? "anónimo"]);
     }
     for (const [i, e] of (etapas ?? []).entries()) {
       if (e.estado === 3)

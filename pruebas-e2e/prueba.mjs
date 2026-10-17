@@ -13,6 +13,7 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 
 const BASE = process.env.BASE_URL || "http://localhost:5173";
 const SHOTS = path.join(process.cwd(), "shots");
@@ -173,10 +174,38 @@ try {
   await n.page.getByRole("button", { name: /^Donar \$300\.000/ }).click();
   await n.page.getByRole("button", { name: "Aprobar pago" }).click();
   await n.page.getByText("¡Gracias! Donaste $300.000").waitFor({ timeout: 30000 });
+  ok("donación sin wallet y sin pagar gas");
+
+  // 4b. Constancia: datos solo en el PDF; en público elige aparecer con su nombre (sin gas)
+  paso("Constancia de donación y nombre público");
+  await n.page.getByLabel("Nombre completo (opcional)").fill("María Fernanda González");
+  await n.page.getByLabel("Número (opcional)").fill("1020304050");
+  await n.page.getByRole("radio", { name: "Con mi nombre" }).click();
+  if ((await n.page.getByLabel("Nombre que verán todos").inputValue()) !== "María G.") throw new Error("no sugirió «María G.» como nombre público");
+  await n.page.getByRole("button", { name: "Guardar cómo aparezco" }).click();
+  await toast(n.page, "Ahora apareces como «María G.»");
+  await n.page.getByRole("link", { name: "María G." }).first().waitFor({ timeout: 20000 });
+  ok("en «Últimas donaciones» aparece «María G.» (la cédula no se publica)");
+  const [descarga] = await Promise.all([n.page.waitForEvent("download"), n.page.getByRole("button", { name: "Descargar constancia (PDF)" }).click()]);
+  const rutaPdf = path.join(SHOTS, "constancia.pdf");
+  await descarga.saveAs(rutaPdf);
+  const bruto = fs.readFileSync(rutaPdf);
+  if (!bruto.toString("latin1", 0, 4).startsWith("%PDF")) throw new Error("la constancia no es un PDF");
+  if (bruto.length > 150 * 1024) throw new Error(`la constancia pesa ${(bruto.length / 1024).toFixed(0)} KB`);
+  // El PDF va comprimido: se inflan sus streams para leer el texto
+  let texto = bruto.toString("latin1");
+  for (const m of [...texto.matchAll(/stream\r?\n/g)]) {
+    const ini = m.index + m[0].length;
+    try {
+      texto += zlib.inflateSync(bruto.subarray(ini, texto.indexOf("endstream", ini))).toString("latin1");
+    } catch {}
+  }
+  for (const t of ["Constancia de donaci", "1020304050", "300.000", "Con el nombre"]) if (!texto.includes(t)) throw new Error(`la constancia no dice «${t}»`);
+  ok(`constancia PDF de ${(bruto.length / 1024).toFixed(0)} KB con nombre, cédula, monto y QR`);
   await n.page.screenshot({ path: `${SHOTS}/02-donar-nequi.png`, fullPage: true });
   await n.page.getByRole("button", { name: "Ver a dónde va mi dinero →" }).click();
   await n.page.getByText("De tus 300.000 MockCOP").waitFor({ timeout: 20000 });
-  ok("donación sin wallet y sin pagar gas; la empresa aliada aparece con su aporte");
+  ok("rastreo de la donación: la empresa aliada aparece con su aporte");
 
   // 5. Donante con MetaMask completa la meta (permit, 1 tx)
   paso("Donante con MetaMask completa la meta");

@@ -31,7 +31,8 @@
     "pasarela:monad": "node scripts/pasarela.mjs --red monad",
     "evidencias:publicar": "node scripts/publicar-evidencias.mjs --red monad",
     "vercel:env": "node scripts/vercel-env.mjs",
-    "url:monad": "node scripts/url-recibo.mjs --red monad"
+    "url:monad": "node scripts/url-recibo.mjs --red monad",
+    "nombres:monad": "node scripts/desplegar-nombres.mjs --red monad"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.1.0",

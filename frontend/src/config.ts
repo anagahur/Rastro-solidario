@@ -70,6 +70,10 @@ export const DIRECCIONES = {
 };
 export const CONFIGURADO = Object.values(DIRECCIONES).every((d) => d !== CERO);
 
+/** Contrato de nombres públicos de los donantes. Opcional: sin él todos aparecen anónimos. */
+export const DIRECCION_NOMBRES = (env.VITE_NOMBRES_ADDRESS || CERO) as Address;
+export const HAY_NOMBRES = DIRECCION_NOMBRES !== CERO;
+
 /**
  * Monad testnet parte de la definición oficial de viem (incluye Multicall3, así las lecturas
  * se agrupan en una sola llamada) con el RPC y el explorador configurados.

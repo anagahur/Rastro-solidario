@@ -6,6 +6,7 @@ import { campanaEmergenciaAbi, reciboDonacionAbi } from "../abis";
 import { BOT_TELEGRAM, CHAIN_ID, DIRECCIONES, REFRESCO_MS } from "../config";
 import { Direccion, EnlaceTx, Insignia, Seccion, Vacio } from "../componentes/Comunes";
 import { VerEvidencia } from "../componentes/Evidencia";
+import { ConstanciaDonacion } from "../componentes/Constancia";
 import { RecuperarBilletera, RespaldoPalabras } from "../componentes/Recuperacion";
 import { seguirCuenta, useCuentasSeguidas } from "../lib/avisos";
 import { cuentaInvisible, enviarSinGas, useBilleteraInvisible } from "../lib/billeteraInvisible";
@@ -267,6 +268,7 @@ function RastroDonante({ campana, donante }: { campana: Address; donante: Addres
       </div>
 
       <div className="space-y-6">
+        <ConstanciaDonacion campana={campana} donante={donante} />
         {resumen.recibo > 0n && <ReciboNft id={resumen.recibo} />}
         <section className="tarjeta text-sm text-neutro-600">
           <h3 className="font-bold text-neutro-900">¿Cómo se calcula?</h3>

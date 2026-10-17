@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient, useReadContract, useReadContracts } from "wagmi";
-import { campanaEmergenciaAbi, campanaFactoryAbi, historialReputacionAbi, mockCOPAbi, registroActoresAbi } from "../abis";
-import { CONFIGURADO, DIRECCIONES, REFRESCO_MS } from "../config";
+import { campanaEmergenciaAbi, campanaFactoryAbi, historialReputacionAbi, mockCOPAbi, nombresDonantesAbi, registroActoresAbi } from "../abis";
+import { CONFIGURADO, DIRECCIONES, DIRECCION_NOMBRES, HAY_NOMBRES, REFRESCO_MS } from "../config";
 
 const q = { refetchInterval: REFRESCO_MS };
 
@@ -141,6 +141,30 @@ export function useActores() {
     proveedores: aLista(2),
     empresas: aLista(3),
   };
+}
+
+/**
+ * Nombre público que cada donante eligió en la campaña (NombresDonantes). Sin nombre = anónimo.
+ * @returns función que da el nombre de una cuenta, o undefined si es anónima
+ */
+export function useNombresPublicos(campana?: Address, donantes: readonly (Address | undefined)[] = []) {
+  const unicas = [...new Set(donantes.filter(Boolean).map((d) => d!.toLowerCase()))] as Address[];
+  const r = useReadContract({
+    address: DIRECCION_NOMBRES,
+    abi: nombresDonantesAbi,
+    functionName: "nombres",
+    args: [campana!, unicas],
+    query: { ...q, enabled: HAY_NOMBRES && !!campana && unicas.length > 0 },
+  });
+  return useMemo(() => {
+    const m = new Map<string, string>();
+    unicas.forEach((a, i) => {
+      const n = r.data?.[i];
+      if (n) m.set(a, n);
+    });
+    return (a?: string) => (a ? m.get(a.toLowerCase()) : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r.data, unicas.join()]);
 }
 
 export interface EmpresaAliada {

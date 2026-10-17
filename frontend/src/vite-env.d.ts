@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   readonly VITE_CHAIN_ID?: string;
   readonly VITE_RPC_URL?: string;
+  /** NombresDonantes: cada donante elige si aparece anónimo o con su nombre */
+  readonly VITE_NOMBRES_ADDRESS?: string;
   /** RPCs de respaldo separados por comas (vacío = sin respaldo) */
   readonly VITE_RPC_RESPALDO?: string;
   readonly VITE_EXPLORER_URL?: string;

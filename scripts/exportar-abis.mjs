@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { RAIZ, abi } from "./lib/entorno.mjs";
 
-const CONTRATOS = ["MockCOP", "RegistroActores", "CampanaFactory", "CampanaEmergencia", "ReciboDonacion", "HistorialReputacion", "ReenviadorGas"];
+const CONTRATOS = ["MockCOP", "RegistroActores", "CampanaFactory", "CampanaEmergencia", "ReciboDonacion", "HistorialReputacion", "ReenviadorGas", "NombresDonantes"];
 
 export function exportarAbis() {
   let ts = "// Archivo generado por scripts/exportar-abis.mjs. No editar a mano.\n\n";

@@ -21,7 +21,7 @@ import {
   type PrivateKeyAccount,
 } from "viem";
 import { generateMnemonic, mnemonicToAccount, privateKeyToAccount, spanish } from "viem/accounts";
-import { campanaEmergenciaAbi, mockCOPAbi, reenviadorGasAbi } from "../abis";
+import { campanaEmergenciaAbi, mockCOPAbi, nombresDonantesAbi, reenviadorGasAbi } from "../abis";
 import { CHAIN_ID, DIRECCIONES } from "../config";
 import { MENSAJES } from "./errores";
 import { clientePublico } from "./cliente";
@@ -183,7 +183,7 @@ const ESPERA_API_MS = 120_000;
 function traducir(revert?: Hex, mensaje?: string): string {
   if (revert) {
     try {
-      const d = decodeErrorResult({ abi: campanaEmergenciaAbi, data: revert });
+      const d = decodeErrorResult({ abi: [...campanaEmergenciaAbi, ...nombresDonantesAbi], data: revert });
       return MENSAJES[d.errorName] ?? d.errorName;
     } catch {}
   }

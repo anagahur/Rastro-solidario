@@ -21,6 +21,7 @@ Guion de la presentación: [docs/PITCH.md](docs/PITCH.md).
 | **Reputación on-chain** | Historial público de cada fundación, proveedor, verificador y empresa entre campañas: etapas pagadas, rechazadas, vencidas, sobrecostos, monto. Lo escriben **solo** los contratos de las campañas oficiales. Índice de confianza = pagadas ÷ (pagadas + rechazadas + vencidas + sobrecostos). | `HistorialReputacion` |
 | **Avisos al donante** | «Hoy se usaron $60.000 de tu donación en mercados para «Inundación…»». Campanita en la app, notificación del navegador y bot de Telegram opcional. | `lib/avisos.ts`, `scripts/notificador.mjs` |
 | **Página pública** | Sin wallet: línea de tiempo, mapa de entregas (OpenStreetMap), galería de evidencias, QR para compartir, WhatsApp/X y **datos abiertos** (CSV/JSON) para periodistas y veedurías. | `#/campana/<dirección>` |
+| **Constancia y nombre público** | Quien dona descarga una constancia en PDF con su nombre y cédula/NIT (o «Anónimo») y un QR que la verifica en la cadena. Aparte, elige si en la página pública aparece **anónimo o con su nombre**, y puede cambiarlo cuando quiera, sin gas. El nombre completo y el documento nunca salen del dispositivo: a la cadena solo va el nombre público que la persona escribe. | `NombresDonantes` |
 | **Empresas aliadas** | Una empresa registrada dona como cualquier persona: el aporte queda a su nombre, recibe su recibo NFT, rastrea en qué se gastó cada peso y aparece destacada en la campaña, en la página pública y en Reputación. Si hay reembolso, recupera su parte. | `donar` / `donarConPermit` |
 
 ## Actores (todos simulados con wallets de prueba)
@@ -48,6 +49,7 @@ Guion de la presentación: [docs/PITCH.md](docs/PITCH.md).
 | `MockCOP.sol` | Peso simulado (ERC-20 + **ERC-2612 permit**). Faucet público y `mintLote` |
 | `ReciboDonacion.sol` | NFT de recibo **intransferible**, con imagen SVG generada en la cadena y enlace al rastreo |
 | `Dispersor.sol` | Utilidad de la simulación: reparte MON a muchas wallets en una sola transacción |
+| `NombresDonantes.sol` | Nombre público opcional de cada donante por campaña (anónimo por defecto). Solo quien donó puede ponerlo o quitarlo; el admin puede retirar uno ofensivo, nunca ponerlo. Acepta gas patrocinado. Es aparte para no tocar las campañas desplegadas (`pnpm nombres:monad` lo agrega) |
 
 ### Ciclo de vida
 
@@ -138,7 +140,7 @@ docs/           PITCH.md
 
 ```bash
 pnpm install
-pnpm test:contracts     # 107 tests: unitarios, fuzz e invariantes
+pnpm test:contracts     # 116 tests: unitarios, fuzz e invariantes
 ```
 
 ## Correr en local (Anvil)
@@ -241,10 +243,10 @@ carpeta del repo (Vercel toma `vercel.json`) y en *Environment Variables* pega e
 
 | Qué | Cómo | Resultado |
 |---|---|---|
-| Contratos | `pnpm test:contracts` | **107 tests**: camino feliz con 50 donantes, conteo en campo (menos unidades = rechazo), comunidad (quórum, orden, plazo), gas patrocinado (familia y donante sin gas, firma alterada), sobrecosto (3 de 3, un rechazo basta), matching heredado del contrato (tope, meta, devolución, conflicto de interés), reputación entre campañas, 20+ accesos no autorizados, NFT, fuzz e **invariantes** (el saldo siempre cuadra, incluido el matching bloqueado; nunca sale más de lo que entró; la fundación nunca cobra) |
+| Contratos | `pnpm test:contracts` | **116 tests**: camino feliz con 50 donantes, conteo en campo (menos unidades = rechazo), comunidad (quórum, orden, plazo), gas patrocinado (familia y donante sin gas, firma alterada), sobrecosto (3 de 3, un rechazo basta), matching heredado del contrato (tope, meta, devolución, conflicto de interés), reputación entre campañas, nombres públicos de donantes (solo quien donó, sin gas, moderación), 20+ accesos no autorizados, NFT, fuzz e **invariantes** (el saldo siempre cuadra, incluido el matching bloqueado; nunca sale más de lo que entró; la fundación nunca cobra) |
 | Simulación | `pnpm simular:local` | 3 escenarios con wallets simuladas, evidencias con imágenes y reputación final |
 | Monad testnet | `cd pruebas-e2e && node monad.mjs` (o `BASE_URL=… node monad.mjs`) | Contra la app real en Monad (local o Vercel): API, 5 pestañas sin errores, evidencia publicada, donación con Nequi y con PSE y su rastreo |
-| Frontend | `cd pruebas-e2e && npm run instalar && npm run prueba` | Chromium real: censo y tarjetas QR, aporte de empresa aliada, donación con Nequi sin wallet, donación con MetaMask, sobrecosto, evidencia con foto y GPS, 3 de 3 verificadores, familia confirma desde el celular, página pública (línea de tiempo, mapa, integridad), reputación, avisos, rechazo, reembolso sin gas y vista móvil |
+| Frontend | `cd pruebas-e2e && npm run instalar && npm run prueba` | Chromium real: censo y tarjetas QR, aporte de empresa aliada, donación con Nequi sin wallet, constancia PDF y nombre público, donación con MetaMask, sobrecosto, evidencia con foto y GPS, 3 de 3 verificadores, familia confirma desde el celular, página pública (línea de tiempo, mapa, integridad), reputación, avisos, rechazo, reembolso sin gas y vista móvil |
 
 ## Límites que conviene reconocer en la sustentación
 

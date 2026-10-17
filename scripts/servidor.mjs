@@ -86,6 +86,11 @@ const PERMITIDAS = {
   [toFunctionSelector("confirmarRecepcion(uint256)")]: "confirmar recepción",
   [toFunctionSelector("reclamarReembolso()")]: "reclamar reembolso",
 };
+/** En el contrato NombresDonantes: el donante decide si aparece con su nombre o anónimo. */
+const PERMITIDAS_NOMBRES = {
+  [toFunctionSelector("mostrarNombre(address,string)")]: "mostrar nombre",
+  [toFunctionSelector("ocultarNombre(address)")]: "volver a anónimo",
+};
 const GAS_MAXIMO = 1_500_000n;
 
 /** En Monad se cobra el gas LIMIT: falla con un mensaje claro si la cuenta no alcanza a pagarlo. */
@@ -263,12 +268,15 @@ async function reenviar(ctx, cuerpo) {
   };
   if (req.value !== 0n) throw Object.assign(new Error("No se patrocinan envíos de valor"), { estado: 400 });
   if (req.gas > GAS_MAXIMO) throw Object.assign(new Error("Gas solicitado demasiado alto"), { estado: 400 });
-  const accion = PERMITIDAS[req.data.slice(0, 10).toLowerCase()];
-  if (!accion) throw Object.assign(new Error("Esa acción no tiene gas patrocinado"), { estado: 403 });
-
   const { publico, reporte } = ctx;
-  const oficial = await publico.readContract({ address: reporte.CampanaFactory, abi: ABI_FACTORY, functionName: "esCampana", args: [req.to] });
-  if (!oficial) throw Object.assign(new Error("Solo se patrocinan campañas oficiales"), { estado: 403 });
+  // El contrato de nombres valida él mismo la campaña y que quien firma haya donado.
+  const aNombres = !!reporte.NombresDonantes && isAddressEqual(req.to, reporte.NombresDonantes);
+  const accion = (aNombres ? PERMITIDAS_NOMBRES : PERMITIDAS)[req.data.slice(0, 10).toLowerCase()];
+  if (!accion) throw Object.assign(new Error("Esa acción no tiene gas patrocinado"), { estado: 403 });
+  if (!aNombres) {
+    const oficial = await publico.readContract({ address: reporte.CampanaFactory, abi: ABI_FACTORY, functionName: "esCampana", args: [req.to] });
+    if (!oficial) throw Object.assign(new Error("Solo se patrocinan campañas oficiales"), { estado: 403 });
+  }
   const firmaValida = await publico.readContract({ address: reporte.ReenviadorGas, abi: ABI_FORWARDER, functionName: "verify", args: [req] });
   if (!firmaValida) throw Object.assign(new Error("La firma no es válida o ya se usó"), { estado: 400 });
 

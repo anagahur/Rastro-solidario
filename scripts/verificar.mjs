@@ -71,6 +71,7 @@ await verificar("HistorialReputacion", r.HistorialReputacion, [r.deployer]);
 await verificar("ReenviadorGas", r.ReenviadorGas);
 await verificar("CampanaFactory", r.CampanaFactory, [r.MockCOP, r.RegistroActores, r.ReciboDonacion, r.HistorialReputacion, r.ReenviadorGas]);
 await verificar("Dispersor", r.Dispersor);
+if (r.NombresDonantes) await verificar("NombresDonantes", r.NombresDonantes, [r.CampanaFactory, r.ReenviadorGas, r.deployer]);
 
 // Campañas: se reconstruye la ConfigCampana original desde las funciones view.
 const abiF = artefacto("CampanaFactory").abi;

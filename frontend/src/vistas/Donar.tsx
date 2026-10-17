@@ -6,9 +6,10 @@ import { campanaEmergenciaAbi, mockCOPAbi } from "../abis";
 import { CHAIN_ID, DIRECCIONES, ES_MONAD } from "../config";
 import { Etapas, ResumenCampana } from "../componentes/Campana";
 import { Seccion, Vacio } from "../componentes/Comunes";
+import { ConstanciaDonacion } from "../componentes/Constancia";
 import { RespaldoPalabras } from "../componentes/Recuperacion";
 import { ErrorReenvio, useBilleteraInvisible, donarSinCripto, type PagoPrevio, type PasoDonacion } from "../lib/billeteraInvisible";
-import { useCampana, useEmpresasAliadas, useNombres, useSaldoCop } from "../lib/datos";
+import { useCampana, useEmpresasAliadas, useNombres, useNombresPublicos, useSaldoCop } from "../lib/datos";
 import { mensajeError } from "../lib/errores";
 import { corta, fecha, pesos } from "../lib/formato";
 import { useAvisar } from "../lib/notificaciones";
@@ -194,24 +195,27 @@ function DonarFacil({ campana, montoPesos }: { campana: Address; montoPesos: num
   if (fase === "listo" && resultado) {
     const enlace = `${window.location.origin}/#/rastreo/${campana}/${resultado.cuenta}`;
     return (
-      <div className="space-y-3 rounded-2xl bg-exito-50 p-5 ring-1 ring-inset ring-exito-200">
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-exito-600 text-xl font-bold text-white shadow-sm" aria-hidden>
-          ✓
-        </span>
-        <p className="font-display text-xl font-extrabold text-exito-900">¡Gracias! Donaste ${montoPesos.toLocaleString("es-CO")} 💚</p>
-        <p className="text-sm text-exito-800">
-          Referencia del pago: <strong>{resultado.referencia}</strong>. Tu donación ya está en el contrato y nadie la puede mover sin verificación.
-        </p>
-        <button className="btn-primario w-full" onClick={() => navegar(`/rastreo/${campana}/${resultado.cuenta}`)}>
-          Ver a dónde va mi dinero →
-        </button>
-        <button className="btn-secundario w-full text-xs" onClick={() => navigator.clipboard?.writeText(enlace).then(() => avisar("exito", "Enlace copiado", "Guárdalo para seguir tu donación desde cualquier lugar."))}>
-          Copiar mi enlace de rastreo
-        </button>
-        <p className="text-[11px] text-exito-700">
-          Te avisaremos aquí (🔔) cuando se use tu plata. Tu "billetera invisible" ({corta(resultado.cuenta)}) quedó guardada en este navegador.
-        </p>
-        <RespaldoPalabras />
+      <div className="space-y-4">
+        <div className="space-y-3 rounded-2xl bg-exito-50 p-5 ring-1 ring-inset ring-exito-200">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-exito-600 text-xl font-bold text-white shadow-sm" aria-hidden>
+            ✓
+          </span>
+          <p className="font-display text-xl font-extrabold text-exito-900">¡Gracias! Donaste ${montoPesos.toLocaleString("es-CO")} 💚</p>
+          <p className="text-sm text-exito-800">
+            Referencia del pago: <strong>{resultado.referencia}</strong>. Tu donación ya está en el contrato y nadie la puede mover sin verificación.
+          </p>
+          <button className="btn-primario w-full" onClick={() => navegar(`/rastreo/${campana}/${resultado.cuenta}`)}>
+            Ver a dónde va mi dinero →
+          </button>
+          <button className="btn-secundario w-full text-xs" onClick={() => navigator.clipboard?.writeText(enlace).then(() => avisar("exito", "Enlace copiado", "Guárdalo para seguir tu donación desde cualquier lugar."))}>
+            Copiar mi enlace de rastreo
+          </button>
+          <p className="text-[11px] text-exito-700">
+            Te avisaremos aquí (🔔) cuando se use tu plata. Tu "billetera invisible" ({corta(resultado.cuenta)}) quedó guardada en este navegador.
+          </p>
+          <RespaldoPalabras />
+        </div>
+        <ConstanciaDonacion campana={campana} donante={resultado.cuenta} />
       </div>
     );
   }
@@ -395,32 +399,35 @@ export function DonarConWallet({ campana, wei, restante, pesosNum }: { campana: 
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (usarApprove) donarConApprove();
-        else donarConPermit();
-      }}
-      className="space-y-3"
-    >
-      {address && saldo !== undefined && saldo < wei && (
-        <p className="rounded-lg bg-peligro-50 p-2 text-xs text-peligro-800">Tu saldo ({pesos(saldo)}) no alcanza. Pide MockCOP en el faucet de arriba.</p>
-      )}
-      <button className="btn-primario w-full py-3 text-base" disabled={!address || ocupado || pesosNum <= 0}>
-        {!address ? "Conecta tu wallet para donar" : firmando ? "Firma el permiso en MetaMask…" : pendiente ? `${pendiente}…` : `Donar ${pesosNum.toLocaleString("es-CO")} MockCOP`}
-      </button>
-      <label className="flex items-start gap-2 text-xs text-neutro-500">
-        <input type="checkbox" checked={usarApprove} onChange={(e) => setUsarApprove(e.target.checked)} className="mt-0.5" />
-        <span>
-          Usar <em>approve</em> + donar (2 transacciones). Por defecto se usa una firma gratuita (permit) y <strong>una sola transacción</strong>.
-        </span>
-      </label>
-      {listo && address && (
-        <button type="button" className="btn-secundario w-full" onClick={() => navegar(`/rastreo/${campana}/${address}`)}>
-          Ver a dónde va mi dinero →
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (usarApprove) donarConApprove();
+          else donarConPermit();
+        }}
+        className="space-y-3"
+      >
+        {address && saldo !== undefined && saldo < wei && (
+          <p className="rounded-lg bg-peligro-50 p-2 text-xs text-peligro-800">Tu saldo ({pesos(saldo)}) no alcanza. Pide MockCOP en el faucet de arriba.</p>
+        )}
+        <button className="btn-primario w-full py-3 text-base" disabled={!address || ocupado || pesosNum <= 0}>
+          {!address ? "Conecta tu wallet para donar" : firmando ? "Firma el permiso en MetaMask…" : pendiente ? `${pendiente}…` : `Donar ${pesosNum.toLocaleString("es-CO")} MockCOP`}
         </button>
-      )}
-    </form>
+        <label className="flex items-start gap-2 text-xs text-neutro-500">
+          <input type="checkbox" checked={usarApprove} onChange={(e) => setUsarApprove(e.target.checked)} className="mt-0.5" />
+          <span>
+            Usar <em>approve</em> + donar (2 transacciones). Por defecto se usa una firma gratuita (permit) y <strong>una sola transacción</strong>.
+          </span>
+        </label>
+        {listo && address && (
+          <button type="button" className="btn-secundario w-full" onClick={() => navegar(`/rastreo/${campana}/${address}`)}>
+            Ver a dónde va mi dinero →
+          </button>
+        )}
+      </form>
+      {listo && address && <ConstanciaDonacion campana={campana} donante={address} />}
+    </>
   );
 }
 
@@ -428,6 +435,8 @@ function DonacionesRecientes({ campana }: { campana: Address }) {
   const { recientes } = useCampana(campana);
   const { esEmpresa } = useEmpresasAliadas(campana);
   const nombre = useNombres(recientes.filter((d) => esEmpresa(d.donante)).map((d) => d.donante));
+  // Cada donante eligió si aparece con su nombre; si no, es anónimo
+  const nombrePublico = useNombresPublicos(campana, recientes.map((d) => d.donante));
   return (
     <Seccion titulo="Últimas donaciones" descripcion="Leídas directamente del contrato.">
       {recientes.length === 0 ? (
@@ -449,9 +458,13 @@ function DonacionesRecientes({ campana }: { campana: Address }) {
                     <a className="block truncate text-xs font-semibold text-alerta-800 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
                       {nombre(d.donante) ?? "Empresa aliada"}
                     </a>
+                  ) : nombrePublico(d.donante) ? (
+                    <a className="block truncate text-xs font-semibold text-neutro-800 hover:text-marca-700 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
+                      {nombrePublico(d.donante)}
+                    </a>
                   ) : (
-                    <a className="block truncate font-mono text-xs text-neutro-600 hover:text-marca-700 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
-                      {corta(d.donante)}
+                    <a className="block truncate text-xs text-neutro-600 hover:text-marca-700 hover:underline" href={`#/rastreo/${campana}/${d.donante}`}>
+                      Anónimo <span className="font-mono text-neutro-400">· {corta(d.donante)}</span>
                     </a>
                   )}
                   <span className="block text-[11px] text-neutro-400">{empresa ? "Empresa aliada · " : ""}{fecha(d.fecha)}</span>

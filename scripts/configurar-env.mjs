@@ -20,6 +20,8 @@ const valores = {
   VITE_REPUTACION_ADDRESS: r.HistorialReputacion,
   VITE_REENVIADOR_ADDRESS: r.ReenviadorGas,
   VITE_BLOQUE_DESPLIEGUE: String(r.bloqueDespliegue ?? 0),
+  // Nombres públicos de los donantes (contrato agregado después: pnpm nombres:monad)
+  VITE_NOMBRES_ADDRESS: r.NombresDonantes ?? "",
   // Con Pinata, el navegador lee las evidencias directo de IPFS (ver pnpm pinata). La URL del
   // gateway es pública: puede ir en .env.production.
   ...(process.env.PINATA_JWT && process.env.IPFS_GATEWAY ? { VITE_IPFS_GATEWAY: process.env.IPFS_GATEWAY } : {}),
