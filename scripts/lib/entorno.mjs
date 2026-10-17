@@ -52,12 +52,25 @@ export const monadTestnet = defineChain({
  * Transporte con respaldo: si un RPC falla (caído, lento o límite de tasa) se pasa al siguiente.
  * Las transacciones se firman localmente, así que cualquier nodo puede difundirlas.
  */
-export function transporteRed(red, { timeout = 20_000 } = {}) {
+export function transporteRed(red, { timeout = 10_000 } = {}) {
   const urls = red.rpcUrls.default.http;
   if (urls.length === 1) return http(urls[0], { timeout, retryCount: 2, retryDelay: 300 });
   // Sin reintentos por nodo: ante un error se pasa enseguida al siguiente; se reintenta la cadena.
-  return fallback(urls.map((url) => http(url, { timeout, retryCount: 0 })), { retryCount: 2, retryDelay: 300 });
+  // rank: cada 15 s mide latencia y estabilidad de cada nodo y usa primero el mejor, así un nodo
+  // lento (no solo uno caído) deja de frenar las donaciones.
+  return fallback(
+    urls.map((url) => http(url, { timeout, retryCount: 0 })),
+    { retryCount: 2, retryDelay: 300, rank: RANKING_RPC },
+  );
 }
+
+/** Medición de los RPC para el respaldo (net_listening, el ping por defecto, no existe en Monad). */
+export const RANKING_RPC = {
+  interval: 15_000,
+  sampleCount: 4,
+  timeout: 3_000,
+  ping: ({ transport }) => transport.request({ method: "eth_blockNumber" }),
+};
 
 export function redPorNombre(nombre) {
   if (nombre === "local" || nombre === "31337") return anvil;

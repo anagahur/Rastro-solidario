@@ -38,8 +38,14 @@ const RPCS_RESPALDO: string[] =
 export function transporteApp(): Transport {
   if (!RPCS_RESPALDO.length) return http(RPC_URL, { timeout: 15_000, retryCount: 2, retryDelay: 300 });
   // Sin reintentos por nodo: ante un error se pasa enseguida al siguiente; se reintenta la cadena.
-  const uno = (url: string) => http(url, { timeout: 15_000, retryCount: 0 });
-  return fallback([RPC_URL, ...RPCS_RESPALDO].map(uno), { retryCount: 2, retryDelay: 300 });
+  // rank: cada 15 s mide latencia y estabilidad de cada nodo y usa primero el mejor, así un nodo
+  // lento (no solo uno caído) deja de frenar la app. net_listening (el ping por defecto) no existe en Monad.
+  const uno = (url: string) => http(url, { timeout: 8_000, retryCount: 0 });
+  return fallback([RPC_URL, ...RPCS_RESPALDO].map(uno), {
+    retryCount: 2,
+    retryDelay: 300,
+    rank: { interval: 15_000, sampleCount: 4, timeout: 3_000, ping: ({ transport }) => transport.request({ method: "eth_blockNumber" }) },
+  });
 }
 
 export const EXPLORER_URL: string =
