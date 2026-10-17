@@ -24,7 +24,14 @@ const lineas = [
   `MONAD_RPC_URL=${process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz"}`,
   `PASARELA_PRIVATE_KEY=${llave(INDICE_PASARELA)}`,
   `PATROCINADOR_PRIVATE_KEY=${llave(INDICE_PATROCINADOR)}`,
-  `PINATA_JWT=${process.env.PINATA_JWT || ""}`,
+  // Topes por IP cada 10 min, holgados para una presentación donde mucha gente dona desde la
+  // misma red wifi (comparten IP). El saldo del patrocinador es el límite real: pnpm recargar:monad.
+  "LIMITE_PAGOS_IP=60",
+  "LIMITE_REENVIOS_IP=150",
+  "LIMITE_EVIDENCIAS_IP=60",
+  // Vercel no acepta variables vacías: solo se incluyen si existen.
+  ...(process.env.PINATA_JWT ? [`PINATA_JWT=${process.env.PINATA_JWT}`] : []),
+  ...(process.env.IPFS_GATEWAY ? [`IPFS_GATEWAY=${process.env.IPFS_GATEWAY}`] : []),
 ];
 const ruta = path.join(RAIZ, ".env.vercel");
 fs.writeFileSync(ruta, lineas.join("\n") + "\n", "utf8");

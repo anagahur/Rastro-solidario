@@ -232,7 +232,7 @@ carpeta del repo (Vercel toma `vercel.json`) y en *Environment Variables* pega e
 | `PATROCINADOR_PRIVATE_KEY` | Paga el gas de quien dona sin cripto, de las familias y de los reembolsos |
 | `PINATA_JWT` | Opcional. Sin ella todo funciona menos **subir evidencias nuevas** desde el Panel de actores (el disco de Vercel no persiste) |
 | `MONAD_RPC_URL`, `MONAD_RPC_RESPALDO` | Opcionales (RPC principal y de respaldo) |
-| `LIMITE_PAGOS_IP`, `LIMITE_REENVIOS_IP`, `LIMITE_EVIDENCIAS_IP` | Opcionales. Tope por IP cada 10 min (10, 30 y 30). Súbelos si en una presentación mucha gente dona desde la misma red wifi |
+| `LIMITE_PAGOS_IP`, `LIMITE_REENVIOS_IP`, `LIMITE_EVIDENCIAS_IP` | Tope por IP cada 10 min. `pnpm vercel:env` los deja en 60, 150 y 60 para que una sala con la misma red wifi pueda donar (sin ellos: 10, 30 y 30) |
 
 ## Pruebas
 
