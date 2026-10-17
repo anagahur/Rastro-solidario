@@ -172,7 +172,7 @@ try {
   await n.page.getByLabel("Celular Nequi").fill("3001234567");
   await n.page.getByRole("button", { name: /^Donar \$300\.000/ }).click();
   await n.page.getByRole("button", { name: "Aprobar pago" }).click();
-  await n.page.getByText("¡Gracias! Donaste 300.000 pesos").waitFor({ timeout: 30000 });
+  await n.page.getByText("¡Gracias! Donaste $300.000").waitFor({ timeout: 30000 });
   await n.page.screenshot({ path: `${SHOTS}/02-donar-nequi.png`, fullPage: true });
   await n.page.getByRole("button", { name: "Ver a dónde va mi dinero →" }).click();
   await n.page.getByText("De tus 300.000 MockCOP").waitFor({ timeout: 20000 });
@@ -181,7 +181,7 @@ try {
   // 5. Donante con MetaMask completa la meta (permit, 1 tx)
   paso("Donante con MetaMask completa la meta");
   const d = await abrir(C.admin, "donar");
-  await d.page.getByRole("button", { name: "Wallet cripto" }).click();
+  await d.page.getByRole("tab", { name: "Wallet cripto" }).click();
   await d.page.getByRole("button", { name: /faucet/ }).click();
   await toast(d.page, "Recibiste 500.000");
   await d.page.getByLabel(/¿Cuánto quieres donar/).fill("500000");
@@ -253,7 +253,7 @@ try {
   // 10. Reputación on-chain
   paso("Reputación on-chain");
   await pub.page.goto(`${BASE}/#/reputacion`);
-  await pub.page.getByRole("button", { name: /^Proveedores/ }).click();
+  await pub.page.getByRole("tab", { name: /^Proveedores/ }).click();
   await pub.page.getByText("Supermercado La Cosecha").first().waitFor({ timeout: 20000 });
   await pub.page.waitForTimeout(1000);
   await pub.page.screenshot({ path: `${SHOTS}/07-reputacion.png`, fullPage: true });

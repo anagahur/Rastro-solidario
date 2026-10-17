@@ -12,7 +12,7 @@ export default {
         marca: tono("marca"), // acción principal y marca (teal)
         neutro: tono("neutro"), // texto, fondos y bordes
         exito: tono("exito"), // pagado, confirmado, íntegro
-        alerta: tono("alerta"), // en curso, matching de empresas
+        alerta: tono("alerta"), // en curso, avisos que piden atención
         peligro: tono("peligro"), // sobrecosto, rechazo, errores
         info: tono("info"), // recaudando, reembolsos
         comunidad: tono("comunidad"), // voz de las familias
